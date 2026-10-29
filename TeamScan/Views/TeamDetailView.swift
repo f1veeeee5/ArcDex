@@ -4,12 +4,13 @@ import UniformTypeIdentifiers
 
 struct TeamDetailView: View {
     @Bindable var team: Team
+    /// navigation path of the Teams tab – the editor is pushed onto it so links inside it (Pokédex) open on top
+    @Binding var path: NavigationPath
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
 
-    @State private var editing: TeamMember?
     @State private var pendingEdit: TeamMember?
     @State private var showAdd = false
     @State private var showScan = false
@@ -31,7 +32,7 @@ struct TeamDetailView: View {
 
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(members) { m in
-                        Button { editing = m } label: { MemberCard(member: m, game: game) }
+                        Button { path.append(m) } label: { MemberCard(member: m, game: game) }
                             .buttonStyle(.plain)
                             .opacity(dragging === m && dragActive ? 0.35 : 1)
                             .onDrag {
@@ -118,12 +119,8 @@ struct TeamDetailView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .navigationDestination(item: $editing) { m in
-            MemberEditView(member: m, game: game)
-                .onDisappear { team.touch() }
-        }
         .sheet(isPresented: $showAdd, onDismiss: {
-            if let p = pendingEdit { pendingEdit = nil; editing = p }
+            if let p = pendingEdit { pendingEdit = nil; path.append(p) }
         }) {
             OptionPicker(title: L("Pokémon wählen", "Choose Pokémon"), options: PickerOptions.pokemon(game: game), selected: nil) { id in
                 guard let id else { return }
