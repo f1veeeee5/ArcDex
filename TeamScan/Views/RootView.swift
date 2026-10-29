@@ -13,8 +13,7 @@ struct RootView: View {
         var id: String { rawValue }
     }
 
-    @State private var path: [Team] = []
-    @State private var showSettings = false
+    @State private var path = NavigationPath()
     @State private var askGame: AddAction?
     @State private var pendingAction: AddAction?
     @State private var pendingGame: Game?
@@ -62,10 +61,6 @@ struct RootView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle(L("Meine Teams", "My Teams"))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                        .accessibilityLabel(L("Einstellungen", "Settings"))
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button { askGame = .create } label: { Label(L("Neues Team", "New team"), systemImage: "plus") }
@@ -79,7 +74,9 @@ struct RootView: View {
             .navigationDestination(for: Team.self) { team in
                 TeamDetailView(team: team)
             }
-            .sheet(isPresented: $showSettings) { SettingsView() }
+            .navigationDestination(for: DexRoute.self) { route in
+                PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
+            }
             .sheet(item: $askGame, onDismiss: runPendingAction) { action in
                 GameChooserSheet(suggested: filter, title: title(for: action)) { game in
                     pendingGame = game

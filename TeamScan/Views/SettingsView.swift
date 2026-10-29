@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    var showsDone = true
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appLanguage") private var language = AppLanguage.system.rawValue
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
@@ -58,9 +59,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(L("Einstellungen", "Settings"))
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(showsDone ? .inline : .large)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button(L("Fertig", "Done")) { dismiss() } }
+                if showsDone {
+                    ToolbarItem(placement: .confirmationAction) { Button(L("Fertig", "Done")) { dismiss() } }
+                }
             }
         }
     }

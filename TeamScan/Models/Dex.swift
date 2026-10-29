@@ -262,6 +262,39 @@ final class Dex {
         return list
     }
 
+    private var dexSets: [Game: Set<Int>] = [:]
+
+    /// Whether a Pokémon (incl. battle forms) appears in a game.
+    func appears(_ pokemonId: Int, in game: Game) -> Bool {
+        guard let p = pokemon(pokemonId) else { return false }
+        switch p.kind {
+        case "mega", "primal":
+            return game.hasMega && (p.vg ?? 99) <= game.maxVersionGroup && appears(p.base ?? 0, in: game)
+        case "gmax":
+            return game.hasDynamax
+        default:
+            if dexSets[game] == nil { dexSets[game] = Set(dexLists[game] ?? []) }
+            return dexSets[game]?.contains(pokemonId) ?? false
+        }
+    }
+
+    func games(for pokemonId: Int) -> [Game] {
+        Game.allCases.filter { appears(pokemonId, in: $0) }
+    }
+
+    func defaultPokemon(species: Int) -> DexPokemon? {
+        speciesDefault[species].flatMap { pokemon($0) }
+    }
+
+    /// All forms of a species (regional, cosmetic, mega, gigantamax …), default first.
+    func forms(ofSpecies species: Int) -> [DexPokemon] {
+        if formsCache.isEmpty {
+            formsCache = Dictionary(grouping: pokemon, by: \.sp)
+        }
+        return (formsCache[species] ?? []).sorted { ($0.def ? 0 : 1, $0.id) < ($1.def ? 0 : 1, $1.id) }
+    }
+    private var formsCache: [Int: [DexPokemon]] = [:]
+
     func abilities(for p: DexPokemon) -> [DexAbility] {
         var ids = p.ab
         if p.ha != 0 { ids.append(p.ha) }

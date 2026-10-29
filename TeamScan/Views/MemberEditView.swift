@@ -51,6 +51,14 @@ struct MemberEditView: View {
         }
         .navigationTitle(member.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: DexRoute(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, game: game)) {
+                    Image(systemName: "book.closed")
+                }
+                .accessibilityLabel(L("Im Pokédex ansehen", "View in Pokédex"))
+            }
+        }
         .sheet(item: $picker) { p in pickerSheet(p) }
         .sheet(isPresented: $showMoveScan) {
             MoveScanSheet(member: member, game: game)

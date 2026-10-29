@@ -11,10 +11,10 @@ struct TeamScanApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            MainTabView()
                 .id(language)
                 .environment(\.locale, Lang.current.locale)
         }
-        .modelContainer(for: [Team.self, TeamMember.self])
+        .modelContainer(for: [Team.self, TeamMember.self, FavoritePokemon.self])
     }
 }
