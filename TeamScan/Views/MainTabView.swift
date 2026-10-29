@@ -15,5 +15,6 @@ struct MainTabView: View {
                 SettingsView(showsDone: false)
             }
         }
+        .tabBarMinimizeBehavior(.onScrollDown)
     }
 }

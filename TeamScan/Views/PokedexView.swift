@@ -41,8 +41,9 @@ struct PokedexView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(spacing: 14) {
-                    controls
+                LazyVStack(spacing: 14, pinnedViews: [.sectionHeaders]) {
+                    header
+                    Section {
                     if showFavorites {
                         let favs = favoriteEntries
                         if favs.isEmpty {
@@ -73,17 +74,53 @@ struct PokedexView: View {
                             ContentUnavailableView.search(text: query).padding(.top, 40)
                         }
                     }
+                    } header: {
+                        controls
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .background(Color(.systemGroupedBackground))
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.immediately)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Pokédex")
-            .searchable(text: $query, prompt: L("Name oder Nummer (Deutsch/Englisch)", "Name or number (German/English)"))
+            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
             }
         }
+    }
+
+    /// Title and search field – they scroll away with the list.
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Pokédex")
+                .font(.largeTitle.weight(.bold))
+                .padding(.top, 8)
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField(L("Name oder Nummer (Deutsch/Englisch)", "Name or number (German/English)"), text: $query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L("Suche löschen", "Clear search"))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var controls: some View {
