@@ -255,7 +255,7 @@
 				DEVELOPMENT_TEAM = XLNT47C2US;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = TeamScan;
+				INFOPLIST_KEY_CFBundleDisplayName = ArcDex;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,7 +290,7 @@
 				DEVELOPMENT_TEAM = XLNT47C2US;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = TeamScan;
+				INFOPLIST_KEY_CFBundleDisplayName = ArcDex;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -1,42 +1,94 @@
 {
-  "fill" : "automatic",
+  "fill-specializations" : [
+    {
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:1.00000,1.00000,1.00000,1.00000",
+          "srgb:0.91373,0.90196,0.89020,1.00000"
+        ],
+        "orientation" : {
+          "start" : {
+            "x" : 0.5,
+            "y" : 1
+          },
+          "stop" : {
+            "x" : 0.5,
+            "y" : 0
+          }
+        }
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:0.16471,0.16471,0.18039,1.00000",
+          "srgb:0.07059,0.07059,0.07843,1.00000"
+        ],
+        "orientation" : {
+          "start" : {
+            "x" : 0.5,
+            "y" : 1
+          },
+          "stop" : {
+            "x" : 0.5,
+            "y" : 0
+          }
+        }
+      }
+    }
+  ],
   "groups" : [
     {
+      "hidden" : false,
       "layers" : [
         {
-          "fill" : {
-            "solid" : "srgb:0.43922,0.01176,0.87059,1.00000"
-          },
-          "image-name" : "pokeball 2.svg",
-          "name" : "pokeball 2",
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "arcdexlogo.svg",
+          "name" : "arcdexlogo",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
-              178,
-              203
+              0.0006964997282921104,
+              0
             ]
           }
-        },
+        }
+      ],
+      "opacity-specializations" : [
         {
-          "fill" : {
-            "solid" : "srgb:0.43922,0.01176,0.87059,1.00000"
-          },
-          "glass" : false,
-          "image-name" : "teamscannerlogo.svg",
-          "name" : "teamscannerlogo",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              84
-            ]
-          }
+          "appearance" : "dark",
+          "value" : 0
         }
       ],
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
       },
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "arcdexlogo_darkmode 3.svg",
+          "name" : "arcdexlogo_darkmode"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "specular-specializations" : [
+        {
+          "appearance" : "dark",
+          "value" : false
+        }
+      ],
       "translucency" : {
         "enabled" : true,
         "value" : 0.3
