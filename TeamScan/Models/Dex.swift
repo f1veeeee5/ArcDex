@@ -313,7 +313,14 @@ final class Dex {
         guard let p = pokemon(pokemonId) else { return false }
         switch p.kind {
         case "mega", "primal":
-            return game.hasMega && (p.vg ?? 99) <= game.maxVersionGroup && appears(p.base ?? 0, in: game)
+            guard game.hasMega, (p.vg ?? 99) <= game.maxVersionGroup else { return false }
+            // the base form must be a normal form – never recurse into another battle form
+            var baseId = p.base ?? 0
+            if baseId == p.id || pokemon(baseId)?.isBattleForm != false {
+                baseId = speciesDefault[p.sp] ?? 0
+            }
+            guard baseId != p.id, pokemon(baseId)?.isBattleForm == false else { return false }
+            return appears(baseId, in: game)
         case "gmax":
             return game.hasDynamax
         default:
