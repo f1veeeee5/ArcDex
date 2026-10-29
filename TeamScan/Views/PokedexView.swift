@@ -280,8 +280,12 @@ struct DexRow: View {
             ZStack(alignment: .bottomLeading) {
                 PokemonSprite(pokemonId: pokemon.id, shiny: shiny)
                     .frame(width: 72, height: 72)
-                if let kind = pokemon.kind {
-                    Text(kind == "gmax" ? "G-MAX" : (kind == "primal" ? "PROTO" : "MEGA"))
+                if pokemon.kind == "mega" {
+                    MechanicBadge(mechanic: .mega)
+                } else if pokemon.kind == "gmax" {
+                    MechanicBadge(mechanic: .gmax)
+                } else if pokemon.kind == "primal" {
+                    Text("PROTO")
                         .font(.system(size: 8, weight: .heavy))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4).padding(.vertical, 2)
@@ -353,6 +357,16 @@ enum DexCategory: String, CaseIterable, Identifiable {
     private static let paradoxSpecies: Set<Int> = Set(984...995).union([1005, 1006, 1009, 1010, 1020, 1021, 1022, 1023])
     /// Pokémon with a species-exclusive Z-Crystal (Sun/Moon & Ultra Sun/Ultra Moon)
     private static let zMoveSpecies: Set<Int> = [25, 26, 133, 143, 151, 724, 727, 730, 745, 778, 784, 785, 786, 787, 788, 791, 792, 800, 802]
+
+    /// Real logo for the filter chip, if there is one.
+    var mechanic: Mechanic? {
+        switch self {
+        case .mega: return .mega
+        case .gmax: return .gmax
+        case .zMove: return .zMove
+        default: return nil
+        }
+    }
 
     func matches(_ p: DexPokemon) -> Bool {
         let wiki = Wiki.shared

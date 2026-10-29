@@ -237,33 +237,38 @@ struct MemberEditView: View {
             if game.hasMega {
                 let megas = dex.megaForms(for: member.pokemonId, game: game)
                 if megas.isEmpty {
-                    Label(L("Keine Mega-Entwicklung verfügbar", "No Mega Evolution available"), systemImage: "sparkles").foregroundStyle(.secondary)
+                    Label { Text(L("Keine Mega-Entwicklung verfügbar", "No Mega Evolution available")) } icon: { MechanicLogo(mechanic: .mega, size: 20) }
+                        .foregroundStyle(.secondary)
                 } else {
                     Picker(selection: Binding(get: { member.megaFormId ?? 0 }, set: { setMega($0 == 0 ? nil : $0) })) {
                         Text(L("Aus", "Off")).tag(0)
                         ForEach(megas) { Text($0.name).tag($0.id) }
                     } label: {
-                        Label(L("Mega-Entwicklung", "Mega Evolution"), systemImage: "sparkles")
+                        Label { Text(L("Mega-Entwicklung", "Mega Evolution")) } icon: { MechanicLogo(mechanic: .mega, size: 20).foregroundStyle(.tint) }
                     }
                 }
             }
             if game.hasDynamax {
                 if dex.gmaxForm(for: member.pokemonId, game: game) != nil {
                     Toggle(isOn: $member.gigantamax.animation(.spring)) {
-                        Label(L("Gigadynamax-Faktor", "Gigantamax Factor"), systemImage: "arrow.up.left.and.arrow.down.right")
+                        Label { Text(L("Gigadynamax-Faktor", "Gigantamax Factor")) } icon: { MechanicLogo(mechanic: .gmax, size: 22).foregroundStyle(Color(hex: 0xE5007E)) }
                     }
                 } else {
-                    Label(L("Dynamax möglich, keine Gigadynamax-Form", "Can Dynamax, no Gigantamax form"), systemImage: "arrow.up.left.and.arrow.down.right")
+                    Label { Text(L("Dynamax möglich, keine Gigadynamax-Form", "Can Dynamax, no Gigantamax form")) } icon: { MechanicLogo(mechanic: .gmax, size: 22) }
                         .foregroundStyle(.secondary)
                 }
             }
             if game.hasTera {
                 row(L("Tera-Typ", "Tera Type"), value: member.teraTypeId.flatMap { dex.type($0)?.name }, icon: {
-                    if let t = member.teraTypeId { Image(systemName: "diamond.fill").foregroundStyle(TypeColor.color(t)) }
+                    MechanicLogo(mechanic: .tera, size: 20)
+                        .foregroundStyle(member.teraTypeId.map { TypeColor.color($0) } ?? Color.secondary)
                 }) { picker = .tera }
             }
         } header: {
-            Text(game.mechanic)
+            HStack(spacing: 6) {
+                GameMechanicIcon(game: game, size: 16)
+                Text(game.mechanic)
+            }
         }
     }
 

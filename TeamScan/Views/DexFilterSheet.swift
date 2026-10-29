@@ -72,7 +72,7 @@ struct DexFilterSheet: View {
                     section(id: "category", title: L("Kategorie", "Category"), selected: draft.categories.map(\.title)) {
                         FlowLayout(spacing: 8) {
                             ForEach(DexCategory.allCases) { c in
-                                FilterChip(title: c.title, icon: c.icon, color: .indigo, isOn: draft.categories.contains(c)) {
+                                FilterChip(title: c.title, icon: c.icon, mechanic: c.mechanic, color: .indigo, isOn: draft.categories.contains(c)) {
                                     toggle(&draft.categories, c)
                                 }
                             }
@@ -224,6 +224,7 @@ struct DexFilterSheet: View {
 private struct FilterChip: View {
     let title: String
     let icon: String
+    var mechanic: Mechanic? = nil
     let color: Color
     let isOn: Bool
     let action: () -> Void
@@ -233,7 +234,11 @@ private struct FilterChip: View {
             withAnimation(.snappy) { action() }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: icon).font(.caption.weight(.bold))
+                if let mechanic {
+                    MechanicLogo(mechanic: mechanic, size: 16)
+                } else {
+                    Image(systemName: icon).font(.caption.weight(.bold))
+                }
                 Text(title).font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(isOn ? Color.white : Color.primary)

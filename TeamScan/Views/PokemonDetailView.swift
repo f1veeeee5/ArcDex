@@ -316,8 +316,12 @@ struct PokemonDetailView: View {
                                 VStack(spacing: 4) {
                                     PokemonSprite(pokemonId: f.id, shiny: shiny).frame(width: 70, height: 70)
                                     Text(f.name).font(.caption2.weight(.semibold)).lineLimit(2).multilineTextAlignment(.center)
-                                    if let kind = f.kind {
-                                        MechanicChip(text: kind == "gmax" ? "G-MAX" : (kind == "primal" ? "PROTO" : "MEGA"))
+                                    if f.kind == "mega" {
+                                        MechanicBadge(mechanic: .mega, size: 20)
+                                    } else if f.kind == "gmax" {
+                                        MechanicBadge(mechanic: .gmax, size: 20)
+                                    } else if f.kind == "primal" {
+                                        MechanicChip(text: "PROTO")
                                     }
                                 }
                                 .frame(width: 96)

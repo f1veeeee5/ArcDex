@@ -154,6 +154,17 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Real logo of the battle mechanic (Mega, Z-Moves, Dynamax, Tera).
+    var mechanicLogo: Mechanic? {
+        switch self {
+        case .xy, .oras, .lgpe, .za: return .mega
+        case .sm: return .zMove
+        case .swsh: return .gmax
+        case .sv: return .tera
+        default: return nil
+        }
+    }
+
     var mechanicIcon: String {
         switch self {
         case .xy, .oras, .lgpe, .za: return "sparkles"

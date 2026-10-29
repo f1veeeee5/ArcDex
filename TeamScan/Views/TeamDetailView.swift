@@ -155,14 +155,17 @@ struct TeamDetailView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Label(game.title, systemImage: "gamecontroller.fill")
+            Text(game.title)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(game.gradient, in: Capsule())
-            Label(game.mechanic, systemImage: game.mechanicIcon)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 5) {
+                GameMechanicIcon(game: game, size: 15)
+                Text(game.mechanic).lineLimit(1)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
             Spacer()
             Text("\(members.count)/6").font(.subheadline.weight(.bold).monospacedDigit()).foregroundStyle(.secondary)
         }
@@ -257,8 +260,8 @@ struct MemberCard: View {
                         .background(.ultraThinMaterial, in: Capsule())
                     Spacer()
                     if member.shiny { ShinyBadge() }
-                    if member.megaFormId != nil { MechanicChip(text: "MEGA") }
-                    if member.gigantamax && game.hasDynamax { MechanicChip(text: "G-MAX") }
+                    if member.megaFormId != nil { MechanicBadge(mechanic: .mega) }
+                    if member.gigantamax && game.hasDynamax { MechanicBadge(mechanic: .gmax) }
                 }
                 .padding(8)
                 if let item = member.item {

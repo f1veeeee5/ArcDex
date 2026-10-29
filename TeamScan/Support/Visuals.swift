@@ -235,3 +235,67 @@ struct CardBackground: ViewModifier {
 extension View {
     func card() -> some View { modifier(CardBackground()) }
 }
+
+
+// MARK: - Battle mechanic logos
+
+enum Mechanic {
+    case mega, gmax, tera, zMove
+
+    var asset: String {
+        switch self {
+        case .mega: return "mechanic-mega"
+        case .gmax: return "mechanic-gmax"
+        case .tera: return "mechanic-tera"
+        case .zMove: return "mechanic-z"
+        }
+    }
+
+    /// The Z-Crystal is a coloured picture, the others are one-colour logos that follow the text colour.
+    var isTemplate: Bool { self != .zMove }
+}
+
+struct MechanicLogo: View {
+    let mechanic: Mechanic
+    var size: CGFloat = 18
+
+    var body: some View {
+        Image(mechanic.asset)
+            .renderingMode(mechanic.isTemplate ? .template : .original)
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Logo of a game's battle mechanic, or a fitting symbol for games without one.
+struct GameMechanicIcon: View {
+    let game: Game
+    var size: CGFloat = 18
+
+    var body: some View {
+        if let m = game.mechanicLogo {
+            MechanicLogo(mechanic: m, size: size)
+        } else {
+            Image(systemName: game.mechanicIcon)
+                .font(.system(size: size * 0.8, weight: .bold))
+                .frame(width: size, height: size)
+        }
+    }
+}
+
+/// Small round badge with a mechanic logo, e.g. on team cards and in the Pokédex list.
+struct MechanicBadge: View {
+    let mechanic: Mechanic
+    var size: CGFloat = 22
+
+    var body: some View {
+        MechanicLogo(mechanic: mechanic, size: size * 0.66)
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(LinearGradient(colors: mechanic == .gmax ? [Color(hex: 0xE5007E), Color(hex: 0x9B1C8C)] : [.pink, .purple],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+    }
+}

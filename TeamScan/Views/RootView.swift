@@ -251,7 +251,7 @@ struct GameChooserSheet: View {
                                 } label: {
                                     VStack(alignment: .leading, spacing: 6) {
                                         HStack {
-                                            Image(systemName: game.mechanicIcon).font(.subheadline.weight(.bold))
+                                            GameMechanicIcon(game: game, size: 18)
                                             Spacer()
                                             Text(game.shortTitle).font(.caption.weight(.heavy))
                                                 .padding(.horizontal, 7).padding(.vertical, 3)
