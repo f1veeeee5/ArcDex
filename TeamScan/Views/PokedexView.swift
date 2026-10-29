@@ -112,6 +112,8 @@ struct PokedexView: View {
                         // reaches further down than the header itself so the fade is visible
                         .padding(.bottom, -56)
                         .ignoresSafeArea(edges: .top)
+                        // only once the list is scrolled – at the top it would cover the filter row
+                        .opacity(titleCollapsed ? 1 : 0)
                         .allowsHitTesting(false)
                     }
             }
@@ -193,7 +195,9 @@ struct PokedexView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "line.3.horizontal.decrease").font(.subheadline.weight(.bold))
-                    Text(filter?.title ?? L("Alle Spiele", "All games")).font(.subheadline.weight(.semibold))
+                    Text(filter?.compactTitle ?? L("Alle Spiele", "All games"))
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
                     Image(systemName: "chevron.down").font(.caption.weight(.bold))
                 }
                 .foregroundStyle(filter == nil ? Color.primary : Color.white)
@@ -206,6 +210,7 @@ struct PokedexView: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .layoutPriority(1)
 
             Spacer()
 
@@ -233,7 +238,7 @@ struct PokedexView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: showFavorites ? "heart.fill" : "heart")
-                    Text(L("Favoriten", "Favorites"))
+                    Text(L("Favoriten", "Favorites")).lineLimit(1)
                     if !favorites.isEmpty { Text("\(favorites.count)").monospacedDigit() }
                 }
                 .font(.subheadline.weight(.semibold))

@@ -186,7 +186,8 @@ struct GameFilterBar: View {
                 HStack(spacing: 8) {
                     Image(systemName: "line.3.horizontal.decrease")
                         .font(.subheadline.weight(.bold))
-                    Text(selected?.title ?? L("Alle Spiele", "All games"))
+                    Text(selected?.compactTitle ?? L("Alle Spiele", "All games"))
+                        .lineLimit(1)
                         .font(.subheadline.weight(.semibold))
                     Image(systemName: "chevron.down")
                         .font(.caption.weight(.bold))

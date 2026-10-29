@@ -32,6 +32,25 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// Title that fits into a small button: full name when short, otherwise an abbreviation like "HG/SS".
+    var compactTitle: String {
+        let t = title.replacingOccurrences(of: " / ", with: "/")
+        if t.count <= 15 { return t }
+        switch self {
+        case .frlg: return L("FR/BG", "FR/LG")
+        case .hgss: return "HG/SS"
+        case .b2w2: return L("S2/W2", "B2/W2")
+        case .oras: return "ΩR/αS"
+        case .lgpe: return "Let's Go"
+        case .bdsp: return L("SD/LP", "BD/SP")
+        case .pla: return L("Leg. Arceus", "Leg. Arceus")
+        case .za: return "Leg. Z-A"
+        case .sv: return L("Karm./Purpur", "Scarlet/Violet")
+        case .swsh: return L("Schwert/Schild", "Sword/Shield")
+        default: return String(t.prefix(14)) + "…"
+        }
+    }
+
     var shortTitle: String {
         switch self {
         case .rb: return L("RB", "RB")
