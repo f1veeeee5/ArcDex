@@ -232,10 +232,12 @@ struct PokemonDetailView: View {
             } else {
                 let female = Double(rate) / 8
                 HStack(spacing: 6) {
-                    Text("♂ \(Int((1 - female) * 100 + 0.5)) %").foregroundStyle(.blue)
-                    Text("♀ \(Int(female * 100 + 0.5)) %").foregroundStyle(.pink)
+                    Text("♂ \(Int((1 - female) * 100 + 0.5))%").foregroundStyle(.blue)
+                    Text("♀ \(Int(female * 100 + 0.5))%").foregroundStyle(.pink)
                 }
-                .font(.subheadline.weight(.semibold))
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 GeometryReader { geo in
                     HStack(spacing: 0) {
                         Rectangle().fill(.blue).frame(width: geo.size.width * (1 - female))
@@ -256,21 +258,19 @@ struct PokemonDetailView: View {
         let stages = wiki.stages(chain: s.ch)
         if stages.flatMap({ $0 }).count > 1 {
             DetailCard(title: L("Entwicklung", "Evolution chain")) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .center, spacing: 6) {
-                        ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
-                            if index > 0 {
-                                Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
-                            }
-                            VStack(spacing: 10) {
-                                ForEach(stage, id: \.self) { sid in
-                                    evolutionMember(sid, isCurrent: sid == current.sp)
-                                }
+                // fits the card width – no horizontal scrolling
+                HStack(alignment: .center, spacing: 4) {
+                    ForEach(Array(stages.enumerated()), id: \.offset) { index, stage in
+                        if index > 0 {
+                            Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                        }
+                        VStack(spacing: 8) {
+                            ForEach(stage, id: \.self) { sid in
+                                evolutionMember(sid, isCurrent: sid == current.sp)
                             }
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 2)
-                    .frame(minWidth: 300)
                 }
             }
         }
@@ -280,17 +280,18 @@ struct PokemonDetailView: View {
     private func evolutionMember(_ sid: Int, isCurrent: Bool) -> some View {
         if let p = dex.defaultPokemon(species: sid) {
             let content = VStack(spacing: 4) {
-                PokemonSprite(pokemonId: p.id, shiny: shiny).frame(width: 74, height: 74)
+                PokemonSprite(pokemonId: p.id, shiny: shiny).frame(width: 64, height: 64)
                 HStack(spacing: 3) {
                     ForEach(p.t, id: \.self) { Circle().fill(TypeColor.color($0)).frame(width: 7, height: 7) }
                 }
-                Text(p.name).font(.caption.weight(.semibold)).lineLimit(1)
+                Text(p.name).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
                 if let cond = wiki.evolutionText(species: sid, game: game) {
                     Text(cond).font(.caption2).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).lineLimit(3)
                 }
             }
-            .frame(width: 104)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 2)
             .padding(.vertical, 6)
             .background(isCurrent ? Color(.tertiarySystemFill) : .clear, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
