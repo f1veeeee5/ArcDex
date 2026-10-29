@@ -9,7 +9,8 @@ struct DexRoute: Hashable {
 struct PokedexView: View {
     @Query(sort: \FavoritePokemon.addedAt, order: .reverse) private var favorites: [FavoritePokemon]
     @AppStorage("dexGameFilter") private var filterRaw = "all"
-    @AppStorage("dexCategory") private var categoryRaw = DexCategory.all.rawValue
+    @AppStorage("dexFilter") private var dexFilterRaw = ""
+    @State private var showFilterSheet = false
     @State private var showFavorites = false
     @State private var query = ""
     @State private var path: [DexRoute] = []
@@ -21,13 +22,17 @@ struct PokedexView: View {
     })
 
     private var filter: Game? { Game(rawValue: filterRaw) }
-    private var category: DexCategory { DexCategory(rawValue: categoryRaw) ?? .all }
+    private var dexFilter: DexFilter { DexFilter(encoded: dexFilterRaw) }
+    private var dexFilterBinding: Binding<DexFilter> {
+        Binding(get: { DexFilter(encoded: dexFilterRaw) }, set: { new in withAnimation(.snappy) { dexFilterRaw = new.encoded } })
+    }
 
     private var allEntries: [DexPokemon] {
         let dex = Dex.shared
         var list = dex.pokemon.sorted { ($0.sp, $0.isBattleForm ? 1 : 0, $0.id) < ($1.sp, $1.isBattleForm ? 1 : 0, $1.id) }
         if let filter { list = list.filter { dex.appears($0.id, in: filter) } }
-        if category != .all { list = list.filter { category.matches($0) } }
+        let f = dexFilter
+        if !f.isEmpty { list = list.filter { f.matches($0) } }
         let q = Fuzzy.normalize(query)
         if !q.isEmpty { list = list.filter { Self.searchIndex[$0.id]?.contains(q) ?? false } }
         return list
@@ -35,10 +40,11 @@ struct PokedexView: View {
 
     private var favoriteEntries: [(DexPokemon, Bool)] {
         let q = Fuzzy.normalize(query)
+        let df = dexFilter
         return favorites.compactMap { f in
             guard let p = Dex.shared.pokemon(f.pokemonId) else { return nil }
             if let filter, !Dex.shared.appears(p.id, in: filter) { return nil }
-            if category != .all && !category.matches(p) { return nil }
+            if !df.isEmpty && !df.matches(p) { return nil }
             if !q.isEmpty && !(Self.searchIndex[p.id]?.contains(q) ?? false) { return nil }
             return (p, f.shiny)
         }
@@ -97,7 +103,8 @@ struct PokedexView: View {
             .onChange(of: query) { _, _ in scrollToTop() }
             .onChange(of: filterRaw) { _, _ in scrollToTop() }
             .onChange(of: showFavorites) { _, _ in scrollToTop() }
-            .onChange(of: categoryRaw) { _, _ in scrollToTop() }
+            .onChange(of: dexFilterRaw) { _, _ in scrollToTop() }
+            .sheet(isPresented: $showFilterSheet) { DexFilterSheet(filter: dexFilterBinding) }
             .safeAreaInset(edge: .top, spacing: 0) {
                 header
                     .padding(.horizontal, 16)
@@ -164,21 +171,30 @@ struct PokedexView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 10) {
             controlRow
-            if category != .all {
-                Button {
-                    withAnimation(.snappy) { categoryRaw = DexCategory.all.rawValue }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: category.icon)
-                        Text(category.title)
-                        Image(systemName: "xmark").font(.caption2.weight(.bold))
+            if !dexFilter.isEmpty {
+                let f = dexFilter
+                let names = f.categories.map(\.title) + f.regions.map(\.title) + f.types.sorted().compactMap { Dex.shared.type($0)?.name }
+                HStack(spacing: 8) {
+                    Button { showFilterSheet = true } label: {
+                        Text(names.sorted().joined(separator: " · "))
+                            .lineLimit(1)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Color.indigo.gradient, in: Capsule())
                     }
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Color.indigo.gradient, in: Capsule())
+                    .buttonStyle(.plain)
+                    Button {
+                        withAnimation(.snappy) { dexFilterRaw = "" }
+                    } label: {
+                        Image(systemName: "xmark").font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .padding(7)
+                            .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L("Filter entfernen", "Clear filters"))
                 }
-                .buttonStyle(.plain)
                 .transition(.scale.combined(with: .opacity))
             }
         }
@@ -214,24 +230,26 @@ struct PokedexView: View {
 
             Spacer()
 
-            Menu {
-                Picker(selection: $categoryRaw.animation(.snappy)) {
-                    ForEach(DexCategory.allCases) { c in
-                        Label(c.title, systemImage: c.icon).tag(c.rawValue)
-                    }
-                } label: { EmptyView() }
-                .pickerStyle(.inline)
-            } label: {
-                Image(systemName: category == .all ? "slider.horizontal.3" : category.icon)
+            Button { showFilterSheet = true } label: {
+                Image(systemName: "slider.horizontal.3")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(category == .all ? Color.primary : Color.white)
+                    .foregroundStyle(dexFilter.isEmpty ? Color.primary : Color.white)
                     .frame(width: 38, height: 38)
-                    .background(category == .all ? AnyShapeStyle(Color(.secondarySystemGroupedBackground)) : AnyShapeStyle(Color.indigo.gradient), in: Circle())
+                    .background(dexFilter.isEmpty ? AnyShapeStyle(Color(.secondarySystemGroupedBackground)) : AnyShapeStyle(Color.indigo.gradient), in: Circle())
+                    .overlay(alignment: .topTrailing) {
+                        if dexFilter.count > 0 {
+                            Text("\(dexFilter.count)")
+                                .font(.caption2.weight(.heavy))
+                                .foregroundStyle(.indigo)
+                                .padding(4)
+                                .background(Color.white, in: Circle())
+                                .offset(x: 4, y: -4)
+                        }
+                    }
                     .contentShape(Circle())
             }
-            .menuStyle(.button)
             .buttonStyle(.plain)
-            .accessibilityLabel(L("Kategorie filtern", "Filter by category"))
+            .accessibilityLabel(L("Filter", "Filters"))
 
             Button {
                 withAnimation(.snappy) { showFavorites.toggle() }
@@ -298,13 +316,12 @@ struct DexRow: View {
 
 /// Special groups of Pokémon for the Pokédex filter.
 enum DexCategory: String, CaseIterable, Identifiable {
-    case all, legendary, mythical, ultraBeast, paradox, mega, gmax, primal, zMove, regional, baby
+    case legendary, mythical, ultraBeast, paradox, mega, gmax, primal, zMove, baby
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .all: return L("Alle Pokémon", "All Pokémon")
         case .legendary: return L("Legendär", "Legendary")
         case .mythical: return L("Mysteriös", "Mythical")
         case .ultraBeast: return L("Ultrabestien", "Ultra Beasts")
@@ -313,14 +330,12 @@ enum DexCategory: String, CaseIterable, Identifiable {
         case .gmax: return L("Gigadynamax", "Gigantamax")
         case .primal: return L("Proto-Formen", "Primal forms")
         case .zMove: return L("Eigene Z-Attacke", "Exclusive Z-Move")
-        case .regional: return L("Regionalformen", "Regional forms")
         case .baby: return L("Baby-Pokémon", "Baby Pokémon")
         }
     }
 
     var icon: String {
         switch self {
-        case .all: return "square.grid.2x2"
         case .legendary: return "crown.fill"
         case .mythical: return "sparkle"
         case .ultraBeast: return "hurricane"
@@ -329,7 +344,6 @@ enum DexCategory: String, CaseIterable, Identifiable {
         case .gmax: return "arrow.up.left.and.arrow.down.right"
         case .primal: return "flame.fill"
         case .zMove: return "bolt.fill"
-        case .regional: return "map.fill"
         case .baby: return "heart.circle.fill"
         }
     }
@@ -343,7 +357,6 @@ enum DexCategory: String, CaseIterable, Identifiable {
     func matches(_ p: DexPokemon) -> Bool {
         let wiki = Wiki.shared
         switch self {
-        case .all: return true
         case .legendary: return wiki.species(p.sp)?.leg == 1
         case .mythical: return wiki.species(p.sp)?.leg == 2
         case .ultraBeast: return Self.ultraBeastSpecies.contains(p.sp)
@@ -356,8 +369,6 @@ enum DexCategory: String, CaseIterable, Identifiable {
             // only Alolan Raichu has its own Z-Move, not the normal one
             if p.sp == 26 { return p.key == "raichu-alola" }
             return true
-        case .regional:
-            return ["-alola", "-galar", "-hisui", "-paldea"].contains { p.key.contains($0) } && !p.isBattleForm
         case .baby: return wiki.species(p.sp)?.baby == true
         }
     }
