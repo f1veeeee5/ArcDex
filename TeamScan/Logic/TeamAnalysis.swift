@@ -36,11 +36,11 @@ struct TeamAnalysis {
 
     init(members: [TeamMember], game: Game) {
         let dex = Dex.shared
-        let types = dex.battleTypes
+        let types = dex.battleTypes(gen: game.gen)
 
         defense = types.map { attack in
             DefenseEntry(type: attack, multipliers: members.map {
-                TypeChart.multiplier(attack: attack.id, defense: $0.types(in: game), abilityKey: $0.ability?.key)
+                TypeChart.multiplier(attack: attack.id, defense: $0.types(in: game), abilityKey: game.hasAbilities ? $0.ability?.key : nil, gen: game.gen)
             })
         }
 
@@ -50,7 +50,7 @@ struct TeamAnalysis {
             var best = 0.0
             var hitters = 0
             for moves in damaging {
-                let m = moves.map { TypeChart.multiplier(attack: $0.t, defense: [def.id]) }.max() ?? 0
+                let m = moves.map { TypeChart.multiplier(attack: $0.t, defense: [def.id], gen: game.gen) }.max() ?? 0
                 best = max(best, m)
                 if m > 1 { hitters += 1 }
             }
@@ -95,7 +95,7 @@ struct TeamAnalysis {
         let worst = defense.filter { $0.weak >= 3 || ($0.weak >= 2 && $0.resist + $0.immune == 0 && members.count <= 3) }
             .sorted { $0.balance < $1.balance }
         for entry in worst.prefix(3) {
-            let helpers = typeList(TypeChart.resisters(of: entry.type.id), limit: 3)
+            let helpers = typeList(TypeChart.resisters(of: entry.type.id, gen: game.gen), limit: 3)
             let level: Tip.Level = entry.balance <= -3 ? .problem : .warning
             tips.append(Tip(level: level,
                             title: L("Schwach gegen \(entry.type.name)", "Weak to \(entry.type.name)"),
@@ -140,11 +140,11 @@ struct TeamAnalysis {
             let walled = offense.filter { $0.best < 1 }
             if !walled.isEmpty {
                 tips.append(Tip(level: .problem, title: L("Kaum Schaden gegen \(walled.map(\.type.name).joined(separator: ", "))", "Little damage against \(walled.map(\.type.name).joined(separator: ", "))"),
-                                detail: L("Keine deiner Attacken trifft diese Typen auch nur neutral. Gute Optionen: \(typeList(walled.flatMap { TypeChart.counters(of: $0.type.id) }.uniqued()))-Attacken.",
-                                          "None of your moves hits these types even neutrally. Good options: \(typeList(walled.flatMap { TypeChart.counters(of: $0.type.id) }.uniqued())) moves.")))
+                                detail: L("Keine deiner Attacken trifft diese Typen auch nur neutral. Gute Optionen: \(typeList(walled.flatMap { TypeChart.counters(of: $0.type.id, gen: game.gen) }.uniqued()))-Attacken.",
+                                          "None of your moves hits these types even neutrally. Good options: \(typeList(walled.flatMap { TypeChart.counters(of: $0.type.id, gen: game.gen) }.uniqued())) moves.")))
             } else if uncovered.count >= 3 {
                 let names = uncovered.prefix(5).map(\.type.name).joined(separator: ", ")
-                let counter = typeList(TypeChart.bestCover(for: uncovered.map(\.type.id)), limit: 3)
+                let counter = typeList(TypeChart.bestCover(for: uncovered.map(\.type.id), gen: game.gen), limit: 3)
                 tips.append(Tip(level: .warning, title: L("Lücken in der Abdeckung", "Coverage gaps"),
                                 detail: L("Nichts ist sehr effektiv gegen \(names). Am meisten davon decken \(counter)-Attacken ab.",
                                           "Nothing is super effective against \(names). \(counter) moves would cover most of them.")))
@@ -202,7 +202,7 @@ struct TeamAnalysis {
                                       "\(dex.item(id)?.name ?? "?") is used more than once. Official doubles use the item clause.")))
         }
         let noItem = members.filter { $0.itemId == nil }
-        if !noItem.isEmpty && members.count >= 3 {
+        if game.hasHeldItems && !noItem.isEmpty && members.count >= 3 {
             tips.append(Tip(level: .info, title: L("Ohne Item", "No item"),
                             detail: L("\(noItem.map(\.displayName).joined(separator: ", ")) \(noItem.count == 1 ? "trägt" : "tragen") kein Item.",
                                       "\(noItem.map(\.displayName).joined(separator: ", ")) \(noItem.count == 1 ? "holds" : "hold") no item.")))
@@ -258,8 +258,8 @@ struct TeamAnalysis {
 
 extension TypeChart {
     /// Attacking types sorted by how many of the given defending types they hit super effectively.
-    static func bestCover(for defenders: [Int]) -> [Int] {
-        (1...18).map { atk in (atk, defenders.filter { multiplier(attack: atk, defense: [$0]) > 1 }.count) }
+    static func bestCover(for defenders: [Int], gen: Int = 9) -> [Int] {
+        Dex.shared.battleTypes(gen: gen).map(\.id).map { atk in (atk, defenders.filter { multiplier(attack: atk, defense: [$0], gen: gen) > 1 }.count) }
             .filter { $0.1 > 0 }
             .sorted { $0.1 > $1.1 }
             .map(\.0)

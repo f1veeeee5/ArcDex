@@ -59,7 +59,7 @@ struct PokemonDetailView: View {
     // MARK: Header
 
     private func header(_ p: DexPokemon) -> some View {
-        let colors = p.t.map { TypeColor.color($0) }
+        let colors = p.types(gen: game.gen).map { TypeColor.color($0) }
         return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
                 Circle()
@@ -89,8 +89,13 @@ struct PokemonDetailView: View {
                 if p.altName != p.name {
                     Text(p.altName).font(.subheadline).foregroundStyle(.secondary)
                 }
-                HStack(spacing: 6) { ForEach(p.t, id: \.self) { TypeBadge(typeId: $0) } }
+                HStack(spacing: 6) { ForEach(p.types(gen: game.gen), id: \.self) { TypeBadge(typeId: $0) } }
                     .padding(.top, 4)
+                if p.types(gen: game.gen) != p.t {
+                    Text(L("Typen in \(game.title) – heute: \(p.t.compactMap { dex.type($0)?.name }.joined(separator: "/"))",
+                           "Types in \(game.title) – today: \(p.t.compactMap { dex.type($0)?.name }.joined(separator: "/"))"))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
             }
             gamePicker
         }
@@ -100,7 +105,7 @@ struct PokemonDetailView: View {
     private var gamePicker: some View {
         Menu {
             Picker(selection: $game.animation(.snappy)) {
-                ForEach(games) { Text($0.title).tag($0) }
+                GameMenuItems(games: games, asGame: true)
             } label: { EmptyView() }
             .pickerStyle(.inline)
         } label: {
@@ -189,15 +194,19 @@ struct PokemonDetailView: View {
         formsCard(p)
 
         DetailCard(title: L("Fähigkeiten", "Abilities")) {
-            let abilities = dex.abilities(for: p)
-            if abilities.isEmpty {
+            let abilities = game.hasAbilities ? dex.abilities(for: p, gen: game.gen) : []
+            let hidden = p.abilitySlots(gen: game.gen).hidden
+            if !game.hasAbilities {
+                Text(L("In \(game.title) gibt es keine Fähigkeiten.", "\(game.title) has no abilities."))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if abilities.isEmpty {
                 Text(L("Keine Daten", "No data")).foregroundStyle(.secondary)
             }
             ForEach(abilities) { a in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(a.name).font(.headline).foregroundStyle(TypeColor.color(p.t.first ?? 1))
-                        if a.id == p.ha {
+                        if a.id == hidden {
                             Text(L("Versteckt", "Hidden")).font(.caption2.weight(.bold))
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Color(.tertiarySystemFill), in: Capsule())
@@ -389,7 +398,7 @@ struct PokemonDetailView: View {
     }
 
     private func typeDefenseCard(_ p: DexPokemon) -> some View {
-        let all = dex.battleTypes.map { ($0.id, TypeChart.multiplier(attack: $0.id, defense: p.t)) }
+        let all = dex.battleTypes(gen: game.gen).map { ($0.id, TypeChart.multiplier(attack: $0.id, defense: p.types(gen: game.gen), gen: game.gen)) }
         func ids(_ match: (Double) -> Bool) -> [Int] { all.filter { match($0.1) }.map { $0.0 } }
         let groups: [DefenseGroup] = [
             DefenseGroup(title: L("Sehr schwach", "Very weak"), factor: "4×", types: ids { $0 >= 4 }),
@@ -464,7 +473,7 @@ struct PokemonDetailView: View {
     private func encountersCard(_ p: DexPokemon) -> some View {
         let result = wiki.encounters(p, game: game)
         DetailCard(title: L("Fundorte in \(game.title)", "Locations in \(game.title)")) {
-            if !wiki.hasEncounterData(for: game) {
+            if !game.hasEncounterData {
                 Label(L("Für \(game.title) gibt es in der Datenbank leider keine Fundort-Daten. Ich zeige hier lieber nichts, als etwas Falsches.",
                         "There is no location data for \(game.title) in the database. Rather nothing than something wrong."),
                       systemImage: "info.circle")
@@ -476,6 +485,10 @@ struct PokemonDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(L("Keine wilden Fundorte in \(game.title) bekannt.", "No known wild locations in \(game.title)."), systemImage: "leaf")
                         .font(.subheadline.weight(.semibold))
+                    if game.encounterDataPartial {
+                        Text(L("Achtung: Für \(game.title) sind die Daten unvollständig.", "Note: the data for \(game.title) is incomplete."))
+                            .font(.caption).foregroundStyle(.orange)
+                    }
                     if let from = wiki.species(p.sp)?.from, from > 0, let pre = dex.defaultPokemon(species: from) {
                         NavigationLink(value: DexRoute(pokemonId: pre.id, game: game)) {
                             Text(L("Entwickle \(pre.name) – Fundorte ansehen", "Evolve \(pre.name) – see its locations"))
@@ -487,6 +500,12 @@ struct PokemonDetailView: View {
                     }
                 }
             } else {
+                if game.encounterDataPartial {
+                    Label(L("Die Datenbank hat für \(game.title) nur einen Teil der Fundorte. Es kann weitere geben.",
+                            "The database only has part of the locations for \(game.title). There may be more."),
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption).foregroundStyle(.orange)
+                }
                 if result.fromBase {
                     Text(L("Die Daten gelten für alle Formen dieses Pokémon.", "This data applies to all forms of this Pokémon."))
                         .font(.caption).foregroundStyle(.secondary)

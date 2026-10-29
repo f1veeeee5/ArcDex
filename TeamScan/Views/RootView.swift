@@ -179,9 +179,7 @@ struct GameFilterBar: View {
             Menu {
                 Picker(selection: $filterRaw.animation(.snappy)) {
                     Text(L("Alle Spiele", "All games") + "  (\(total))").tag("all")
-                    ForEach(Game.allCases) { game in
-                        Text(game.title + "  (\(counts[game] ?? 0))").tag(game.rawValue)
-                    }
+                    GameMenuItems(counts: counts)
                 } label: { EmptyView() }
                 .pickerStyle(.inline)
             } label: {
@@ -239,36 +237,42 @@ struct GameChooserSheet: View {
                     Text(L("Aus welchem Spiel ist das Team?", "Which game is this team from?"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                        ForEach(Game.allCases) { game in
-                            Button {
-                                onPick(game)
-                                dismiss()
-                            } label: {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    HStack {
-                                        Image(systemName: game.mechanicIcon).font(.title3.weight(.bold))
-                                        Spacer()
-                                        Text("Gen \(game.gen)").font(.caption.weight(.heavy))
-                                            .padding(.horizontal, 7).padding(.vertical, 3)
-                                            .background(.white.opacity(0.22), in: Capsule())
+                    ForEach(Game.generations, id: \.gen) { group in
+                        Text("Generation \(group.gen)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 6)
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            ForEach(group.games) { game in
+                                Button {
+                                    onPick(game)
+                                    dismiss()
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack {
+                                            Image(systemName: game.mechanicIcon).font(.subheadline.weight(.bold))
+                                            Spacer()
+                                            Text(game.shortTitle).font(.caption.weight(.heavy))
+                                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                                .background(.white.opacity(0.22), in: Capsule())
+                                        }
+                                        Spacer(minLength: 0)
+                                        Text(game.title).font(.headline).multilineTextAlignment(.leading)
+                                            .lineLimit(2).minimumScaleFactor(0.8)
                                     }
-                                    Spacer(minLength: 0)
-                                    Text(game.title).font(.headline).multilineTextAlignment(.leading)
-                                    Text(game.mechanic).font(.caption).opacity(0.85).lineLimit(1)
-                                }
-                                .foregroundStyle(.white)
-                                .padding(14)
-                                .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
-                                .background(game.gradient, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .overlay {
-                                    if game == suggested {
-                                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                            .strokeBorder(.white.opacity(0.9), lineWidth: 3)
+                                    .foregroundStyle(.white)
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
+                                    .background(game.gradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .overlay {
+                                        if game == suggested {
+                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                                .strokeBorder(.white.opacity(0.9), lineWidth: 3)
+                                        }
                                     }
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -280,7 +284,7 @@ struct GameChooserSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button(L("Abbrechen", "Cancel")) { dismiss() } }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 }
 

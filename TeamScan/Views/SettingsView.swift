@@ -48,7 +48,7 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent(L("Daten", "Data"), value: "PokéAPI")
-                    LabeledContent(L("Spiele", "Games"), value: Game.allCases.map(\.shortTitle).joined(separator: ", "))
+                    LabeledContent(L("Spiele", "Games"), value: "\(Game.allCases.count)")
                     LabeledContent(L("Pokémon", "Pokémon"), value: "\(Dex.shared.pokemon.count)")
                     LabeledContent(L("Attacken", "Moves"), value: "\(Dex.shared.moves.count)")
                 } header: {

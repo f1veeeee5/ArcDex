@@ -74,7 +74,7 @@ extension TeamMember {
 
     /// Types used for the analysis (mega forms can change types).
     func types(in game: Game) -> [Int] {
-        battleForm(in: game)?.t ?? species?.t ?? []
+        (battleForm(in: game) ?? species)?.types(gen: game.gen) ?? []
     }
 
     var displayName: String {
@@ -130,7 +130,7 @@ extension TeamMember {
 
     /// Returns the mega form that belongs to a mega stone, if it fits this Pokémon.
     func megaForm(forStone itemId: Int) -> Int? {
-        for game in [Game.sm, .xy] {
+        for game in [Game.za, .sm, .oras, .xy, .lgpe] {
             if let form = Dex.shared.megaForms(for: pokemonId, game: game).first(where: { $0.stone == itemId }) {
                 return form.id
             }

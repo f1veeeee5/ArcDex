@@ -39,13 +39,25 @@ enum TypeChart {
         ]
     }()
 
-    static func multiplier(attack: Int, defense: [Int]) -> Double {
-        defense.reduce(1.0) { $0 * (table[attack]?[$1] ?? 1) }
+    /// Older generations: [attacker, defender, factor in %, last generation it applied]. Filled from pokedata.json.
+    static var pastOverrides: [[Int]] = []
+
+    static func single(attack: Int, defense: Int, gen: Int) -> Double {
+        var best: (Int, Int)?
+        for o in pastOverrides where o.count == 4 && o[0] == attack && o[1] == defense && o[3] >= gen {
+            if best == nil || o[3] < best!.0 { best = (o[3], o[2]) }
+        }
+        if let best { return Double(best.1) / 100 }
+        return table[attack]?[defense] ?? 1
+    }
+
+    static func multiplier(attack: Int, defense: [Int], gen: Int = 9) -> Double {
+        defense.reduce(1.0) { $0 * single(attack: attack, defense: $1, gen: gen) }
     }
 
     /// Defensive multiplier incl. common immunity / resistance abilities.
-    static func multiplier(attack: Int, defense: [Int], abilityKey: String?) -> Double {
-        var m = multiplier(attack: attack, defense: defense)
+    static func multiplier(attack: Int, defense: [Int], abilityKey: String?, gen: Int = 9) -> Double {
+        var m = multiplier(attack: attack, defense: defense, gen: gen)
         guard let key = abilityKey else { return m }
         switch key {
         case "levitate", "earth-eater": if attack == T.ground { m = 0 }
@@ -63,12 +75,12 @@ enum TypeChart {
     }
 
     /// Types that resist or are immune to the given attacking type.
-    static func resisters(of attack: Int) -> [Int] {
-        (1...18).filter { multiplier(attack: attack, defense: [$0]) < 1 }
+    static func resisters(of attack: Int, gen: Int = 9) -> [Int] {
+        Dex.shared.battleTypes(gen: gen).map(\.id).filter { multiplier(attack: attack, defense: [$0], gen: gen) < 1 }
     }
 
     /// Types that hit the given defending type super effectively.
-    static func counters(of defense: Int) -> [Int] {
-        (1...18).filter { multiplier(attack: $0, defense: [defense]) > 1 }
+    static func counters(of defense: Int, gen: Int = 9) -> [Int] {
+        Dex.shared.battleTypes(gen: gen).map(\.id).filter { multiplier(attack: $0, defense: [defense], gen: gen) > 1 }
     }
 }

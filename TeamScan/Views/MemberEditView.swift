@@ -36,7 +36,7 @@ struct MemberEditView: View {
             detailsSection
             if game.hasMega || game.hasDynamax || game.hasTera { mechanicSection }
             statsSection
-            evSection
+            if game.hasEVs { evSection }
             Section {
                 Button { showSummaryScan = true } label: {
                     Label(L("Übersichtsseite scannen", "Scan summary screen"), systemImage: "text.viewfinder")
@@ -108,14 +108,16 @@ struct MemberEditView: View {
                 }
 
                 HStack(spacing: 10) {
-                    Button {
-                        withAnimation(.spring) { member.shiny.toggle() }
-                    } label: {
-                        Label(member.shiny ? L("Shiny", "Shiny") : L("Nicht shiny", "Not shiny"), systemImage: member.shiny ? "sparkles" : "sparkle")
-                            .frame(maxWidth: .infinity)
+                    if game.hasShiny {
+                        Button {
+                            withAnimation(.spring) { member.shiny.toggle() }
+                        } label: {
+                            Label(member.shiny ? L("Shiny", "Shiny") : L("Nicht shiny", "Not shiny"), systemImage: member.shiny ? "sparkles" : "sparkle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(member.shiny ? .yellow : .gray)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(member.shiny ? .yellow : .gray)
 
                     Button { picker = .species } label: {
                         Label(L("Ändern", "Change"), systemImage: "arrow.triangle.2.circlepath").frame(maxWidth: .infinity)
@@ -181,15 +183,27 @@ struct MemberEditView: View {
                     Text("\(member.level)").monospacedDigit().foregroundStyle(.secondary)
                 }
             }
-            row(L("Item", "Item"), value: member.item?.name, icon: { ItemIcon(item: member.item).frame(width: 24, height: 24) }) { picker = .item }
-            row(L("Fähigkeit", "Ability"), value: member.ability?.name) { picker = .ability }
-            row(L("Wesen", "Nature"), value: natureText) { picker = .nature }
-            Picker(L("Geschlecht", "Gender"), selection: $member.gender) {
-                Text("–").tag("")
-                Text("♂").tag("M")
-                Text("♀").tag("F")
+            if game.hasHeldItems {
+                row(L("Item", "Item"), value: member.item?.name, icon: { ItemIcon(item: member.item).frame(width: 24, height: 24) }) { picker = .item }
             }
-            .pickerStyle(.segmented)
+            if game.hasAbilities {
+                row(L("Fähigkeit", "Ability"), value: member.ability?.name) { picker = .ability }
+            }
+            if game.hasNatures {
+                row(L("Wesen", "Nature"), value: natureText) { picker = .nature }
+            }
+            if game.hasGender {
+                Picker(L("Geschlecht", "Gender"), selection: $member.gender) {
+                    Text("–").tag("")
+                    Text("♂").tag("M")
+                    Text("♀").tag("F")
+                }
+                .pickerStyle(.segmented)
+            }
+            if !game.hasHeldItems || !game.hasAbilities {
+                Text(L("Ausgeblendete Felder gibt es in \(game.title) nicht.", "Hidden fields don't exist in \(game.title)."))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -371,7 +385,8 @@ struct MemberEditView: View {
         case .ability:
             let options: [PickerOption] = {
                 guard let s = species else { return PickerOptions.allAbilities() }
-                return PickerOptions.abilities(dex.abilities(for: s), hidden: s.ha)
+                let slots = s.abilitySlots(gen: game.gen)
+                return PickerOptions.abilities(dex.abilities(for: s, gen: game.gen), hidden: slots.hidden)
             }()
             OptionPicker(title: L("Fähigkeit wählen", "Choose ability"), options: options, selected: member.abilityId) { member.abilityId = $0 }
         case .nature:
@@ -382,8 +397,11 @@ struct MemberEditView: View {
             let learn = dex.learnset(for: member.pokemonId, game: game)
             OptionPicker(title: L("Attacke \(i + 1)", "Move \(i + 1)"), options: PickerOptions.moves(learn),
                          selected: i < member.moveIds.count ? member.moveIds[i] : nil, allowNone: i < member.moveIds.count,
-                         footer: L("Zeigt nur Attacken, die \(species?.name ?? "das Pokémon") in \(game.title) lernen kann.",
-                                   "Only shows moves \(species?.name ?? "this Pokémon") can learn in \(game.title).")) { id in
+                         footer: game.hasLearnsets
+                            ? L("Zeigt nur Attacken, die \(species?.name ?? "das Pokémon") in \(game.title) lernen kann.",
+                                "Only shows moves \(species?.name ?? "this Pokémon") can learn in \(game.title).")
+                            : L("Für \(game.title) gibt es keine Attackenlisten in der Datenbank – es werden alle Attacken gezeigt.",
+                                "There are no move lists for \(game.title) in the database – all moves are shown.")) { id in
                 member.setMove(id, at: i)
             }
         }

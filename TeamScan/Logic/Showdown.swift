@@ -39,19 +39,25 @@ enum Showdown {
         guard let p = m.species else { return "" }
         var first = speciesName(p)
         if !m.nickname.isEmpty && m.nickname != p.en { first = "\(m.nickname) (\(first))" }
-        if m.gender == "M" { first += " (M)" } else if m.gender == "F" { first += " (F)" }
-        if let item = m.item { first += " @ \(item.en)" }
+        if game.hasGender {
+            if m.gender == "M" { first += " (M)" } else if m.gender == "F" { first += " (F)" }
+        }
+        if game.hasHeldItems, let item = m.item { first += " @ \(item.en)" }
         var lines = [first]
-        if let a = m.ability { lines.append("Ability: \(a.en)") }
+        if game.hasAbilities, let a = m.ability { lines.append("Ability: \(a.en)") }
         if m.level != 100 { lines.append("Level: \(m.level)") }
-        if m.shiny { lines.append("Shiny: Yes") }
+        if game.hasShiny && m.shiny { lines.append("Shiny: Yes") }
         if game.hasDynamax && m.gigantamax { lines.append("Gigantamax: Yes") }
         if game.hasTera, let t = m.teraTypeId.flatMap({ Dex.shared.type($0) }) { lines.append("Tera Type: \(t.en)") }
-        let evs = zip(StatNames.showdown, m.evs).filter { $0.1 > 0 }.map { "\($0.1) \($0.0)" }
-        if !evs.isEmpty { lines.append("EVs: " + evs.joined(separator: " / ")) }
-        if let n = m.nature { lines.append("\(n.en) Nature") }
-        let ivs = zip(StatNames.showdown, m.ivs).filter { $0.1 < 31 }.map { "\($0.1) \($0.0)" }
-        if !ivs.isEmpty { lines.append("IVs: " + ivs.joined(separator: " / ")) }
+        if game.hasEVs {
+            let evs = zip(StatNames.showdown, m.evs).filter { $0.1 > 0 }.map { "\($0.1) \($0.0)" }
+            if !evs.isEmpty { lines.append("EVs: " + evs.joined(separator: " / ")) }
+        }
+        if game.hasNatures, let n = m.nature { lines.append("\(n.en) Nature") }
+        if game.hasEVs {
+            let ivs = zip(StatNames.showdown, m.ivs).filter { $0.1 < 31 }.map { "\($0.1) \($0.0)" }
+            if !ivs.isEmpty { lines.append("IVs: " + ivs.joined(separator: " / ")) }
+        }
         for mv in m.moves { lines.append("- \(mv.en)") }
         return lines.joined(separator: "\n")
     }

@@ -90,6 +90,38 @@ struct DexPokemon: Codable, Identifiable, Hashable, Bilingual {
     let stone: Int?
     /// sprite file name for alternate forms that share one PokéAPI entry (e.g. "423-east")
     let img: String?
+    /// types in earlier generations: "5" = types up to Gen 5
+    let tp: [String: [Int]]?
+    /// abilities in earlier generations: [last gen, slot, ability id (0 = none)]
+    let abp: [[Int]]?
+
+    /// Types as they were in a given generation (e.g. Clefairy was Normal before Gen 6).
+    func types(gen: Int) -> [Int] {
+        guard let tp else { return t }
+        let candidates = tp.compactMap { k, v -> (Int, [Int])? in
+            guard let g = Int(k), g >= gen else { return nil }
+            return (g, v)
+        }
+        return candidates.min { $0.0 < $1.0 }?.1 ?? t
+    }
+
+    /// Regular abilities (slot 1, 2) and hidden ability (slot 3) in a generation.
+    func abilitySlots(gen: Int) -> (regular: [Int], hidden: Int) {
+        var slots: [Int: Int] = [:]
+        for (i, a) in ab.enumerated() { slots[i + 1] = a }
+        if ha != 0 { slots[3] = ha }
+        if let abp {
+            var bySlot: [Int: (Int, Int)] = [:]
+            for e in abp where e.count == 3 && e[0] >= gen {
+                if let cur = bySlot[e[1]], cur.0 <= e[0] { continue }
+                bySlot[e[1]] = (e[0], e[2])
+            }
+            for (slot, v) in bySlot { slots[slot] = v.1 == 0 ? nil : v.1 }
+        }
+        if gen < 5 { slots[3] = nil }
+        let regular = [slots[1], slots[2]].compactMap { $0 }
+        return (regular, slots[3] ?? 0)
+    }
 
     /// Sprite file names to try, most specific first.
     var spriteKeys: [String] {
@@ -105,6 +137,7 @@ struct DexPokemon: Codable, Identifiable, Hashable, Bilingual {
 }
 
 private struct DexData: Codable {
+    let typePast: [[Int]]
     let types: [DexType]
     let abilities: [DexAbility]
     let moves: [DexMove]
@@ -152,6 +185,7 @@ final class Dex {
             fatalError("pokedata.json konnte nicht gelesen werden: \(error)")
         }
         types = raw.types
+        TypeChart.pastOverrides = raw.typePast
         moves = raw.moves
         items = raw.items
         abilities = raw.abilities
@@ -201,6 +235,15 @@ final class Dex {
 
     /// The 18 battle types (without Stellar).
     var battleTypes: [DexType] { types.filter { $0.id <= 18 } }
+
+    /// Types that existed in a generation (no Dark/Steel in Gen 1, no Fairy before Gen 6).
+    func battleTypes(gen: Int) -> [DexType] {
+        battleTypes.filter { t in
+            if gen < 2 && (t.id == T.dark || t.id == T.steel) { return false }
+            if gen < 6 && t.id == T.fairy { return false }
+            return true
+        }
+    }
 
     /// Tera types incl. Stellar.
     var teraTypes: [DexType] { types.filter { $0.id <= 19 } }
@@ -252,6 +295,7 @@ final class Dex {
     }
 
     func items(for game: Game) -> [DexItem] {
+        guard game.hasHeldItems else { return [] }
         if let cached = itemCache[game] { return cached }
         let list = items.filter { item in
             if item.isMegaStone && !game.hasMega { return false }
@@ -294,6 +338,14 @@ final class Dex {
         return (formsCache[species] ?? []).sorted { ($0.def ? 0 : 1, $0.id) < ($1.def ? 0 : 1, $1.id) }
     }
     private var formsCache: [Int: [DexPokemon]] = [:]
+
+    func abilities(for p: DexPokemon, gen: Int) -> [DexAbility] {
+        let slots = p.abilitySlots(gen: gen)
+        var ids = slots.regular
+        if slots.hidden != 0 { ids.append(slots.hidden) }
+        var seen = Set<Int>()
+        return ids.filter { seen.insert($0).inserted }.compactMap { abilityById[$0] }
+    }
 
     func abilities(for p: DexPokemon) -> [DexAbility] {
         var ids = p.ab

@@ -100,7 +100,7 @@ struct TeamDetailView: View {
                         ForEach(SpriteStyle.allCases) { Text($0.label).tag($0.rawValue) }
                     } label: { Label(L("Sprites", "Sprites"), systemImage: "photo") }
                     Picker(selection: Binding(get: { team.game }, set: { team.game = $0 })) {
-                        ForEach(Game.allCases) { Text($0.title).tag($0) }
+                        GameMenuItems(asGame: true)
                     } label: { Label(L("Spiel", "Game"), systemImage: "gamecontroller") }
                     Divider()
                     Button { renameText = team.name; showRename = true } label: { Label(L("Umbenennen", "Rename"), systemImage: "pencil") }

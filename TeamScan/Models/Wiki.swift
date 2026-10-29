@@ -97,13 +97,20 @@ final class Wiki {
 
     func genus(_ species: Int) -> String? { pick(self.species(species)?.g) }
 
-    /// Flavor text for a game. Falls back to the newest other game and tells which one.
+    /// Flavor text for a game. Prefers the app language; falls back to the closest other game and tells which one.
     func flavor(species id: Int, game: Game) -> (text: String, from: Game?)? {
         guard let ft = species(id)?.ft else { return nil }
-        if let t = pick(ft[game.rawValue]) { return (t, nil) }
-        for g in Game.allCases.reversed() where g != game {
-            if let t = pick(ft[g.rawValue]) { return (t, g) }
+        let idx = Lang.current == .de ? 0 : 1
+        func get(_ g: Game, _ i: Int) -> String? {
+            guard let pair = ft[g.rawValue], pair.count == 2, !pair[i].isEmpty else { return nil }
+            return pair[i]
         }
+        let others = Game.allCases.filter { $0 != game }
+            .sorted { (abs($0.gen - game.gen), -$0.gen) < (abs($1.gen - game.gen), -$1.gen) }
+        if let t = get(game, idx) { return (t, nil) }
+        for g in others { if let t = get(g, idx) { return (t, g) } }
+        if let t = get(game, 1) { return (t, nil) }
+        for g in others { if let t = get(g, 1) { return (t, g) } }
         return nil
     }
 
@@ -129,7 +136,6 @@ final class Wiki {
         return ([], false)
     }
 
-    func hasEncounterData(for game: Game) -> Bool { game != .sv }
 
     // MARK: Evolution
 
@@ -260,26 +266,43 @@ final class Wiki {
 extension Game {
     var versionNames: [String] {
         switch self {
+        case .rb: return ["Red", "Blue"]
+        case .y: return ["Yellow"]
+        case .gs: return ["Gold", "Silver"]
+        case .c: return ["Crystal"]
+        case .rs: return ["Ruby", "Sapphire"]
+        case .e: return ["Emerald"]
+        case .frlg: return ["FireRed", "LeafGreen"]
+        case .dp: return ["Diamond", "Pearl"]
+        case .pt: return ["Platinum"]
+        case .hgss: return ["HeartGold", "SoulSilver"]
+        case .bw: return ["Black", "White"]
+        case .b2w2: return ["Black 2", "White 2"]
         case .xy: return ["X", "Y"]
+        case .oras: return ["Omega Ruby", "Alpha Sapphire"]
         case .sm: return ["Sun", "Moon", "Ultra Sun", "Ultra Moon"]
+        case .lgpe: return ["Let's Go Pikachu", "Let's Go Eevee"]
         case .swsh: return ["Sword", "Shield"]
+        case .bdsp: return ["Brilliant Diamond", "Shining Pearl"]
+        case .pla: return ["Legends: Arceus"]
         case .sv: return ["Scarlet", "Violet"]
+        case .za: return ["Legends: Z-A"]
         }
     }
 
     static func localizedVersion(_ v: String) -> String {
         guard Lang.current == .de else { return v }
-        switch v {
-        case "Sun": return "Sonne"
-        case "Moon": return "Mond"
-        case "Ultra Sun": return "Ultrasonne"
-        case "Ultra Moon": return "Ultramond"
-        case "Sword": return "Schwert"
-        case "Shield": return "Schild"
-        case "Scarlet": return "Karmesin"
-        case "Violet": return "Purpur"
-        default: return v
-        }
+        let de: [String: String] = [
+            "Red": "Rot", "Blue": "Blau", "Yellow": "Gelb", "Gold": "Gold", "Silver": "Silber", "Crystal": "Kristall",
+            "Ruby": "Rubin", "Sapphire": "Saphir", "Emerald": "Smaragd", "FireRed": "Feuerrot", "LeafGreen": "Blattgrün",
+            "Diamond": "Diamant", "Pearl": "Perl", "Platinum": "Platin", "Black": "Schwarz", "White": "Weiß",
+            "Black 2": "Schwarz 2", "White 2": "Weiß 2", "Omega Ruby": "Omega Rubin", "Alpha Sapphire": "Alpha Saphir",
+            "Sun": "Sonne", "Moon": "Mond", "Ultra Sun": "Ultrasonne", "Ultra Moon": "Ultramond",
+            "Let's Go Eevee": "Let's Go Evoli", "Sword": "Schwert", "Shield": "Schild",
+            "Brilliant Diamond": "Strahlender Diamant", "Shining Pearl": "Leuchtende Perle",
+            "Scarlet": "Karmesin", "Violet": "Purpur", "Legends: Arceus": "Legenden: Arceus", "Legends: Z-A": "Legenden: Z-A",
+        ]
+        return de[v] ?? v
     }
 }
 

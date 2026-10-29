@@ -91,7 +91,7 @@ struct PokedexView: View {
             Menu {
                 Picker(selection: $filterRaw.animation(.snappy)) {
                     Text(L("Alle Spiele", "All games")).tag("all")
-                    ForEach(Game.allCases) { Text($0.title).tag($0.rawValue) }
+                    GameMenuItems()
                 } label: { EmptyView() }
                 .pickerStyle(.inline)
             } label: {
