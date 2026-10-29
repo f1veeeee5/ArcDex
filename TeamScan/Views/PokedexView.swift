@@ -12,6 +12,8 @@ struct PokedexView: View {
     @State private var showFavorites = false
     @State private var query = ""
     @State private var path: [DexRoute] = []
+    @State private var scrollPosition = ScrollPosition(edge: .top)
+    @State private var titleCollapsed = false
 
     private static let searchIndex: [Int: String] = Dictionary(uniqueKeysWithValues: Dex.shared.pokemon.map {
         ($0.id, Fuzzy.normalize($0.de) + "|" + Fuzzy.normalize($0.en) + "|" + String($0.sp))
@@ -78,6 +80,19 @@ struct PokedexView: View {
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.immediately)
+            .scrollPosition($scrollPosition)
+            .onScrollGeometryChange(for: CGFloat.self) { geo in
+                geo.contentOffset.y + geo.contentInsets.top
+            } action: { _, offset in
+                // hysteresis so the title doesn't flicker while the header changes size
+                let collapse = titleCollapsed ? offset > 4 : offset > 40
+                if collapse != titleCollapsed {
+                    withAnimation(.snappy(duration: 0.25)) { titleCollapsed = collapse }
+                }
+            }
+            .onChange(of: query) { _, _ in scrollToTop() }
+            .onChange(of: filterRaw) { _, _ in scrollToTop() }
+            .onChange(of: showFavorites) { _, _ in scrollToTop() }
             .safeAreaInset(edge: .top, spacing: 0) {
                 header
                     .padding(.horizontal, 16)
@@ -101,12 +116,17 @@ struct PokedexView: View {
         }
     }
 
+    private func scrollToTop() {
+        withAnimation(.snappy) { scrollPosition.scrollTo(edge: .top) }
+    }
+
     /// Title and search field – they stay at the top while the list scrolls underneath.
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Pokédex")
-                .font(.largeTitle.weight(.bold))
-                .padding(.top, 4)
+                .font(titleCollapsed ? .headline : .largeTitle.weight(.bold))
+                .frame(maxWidth: .infinity, alignment: titleCollapsed ? .center : .leading)
+                .padding(.top, titleCollapsed ? 0 : 4)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField(L("Name oder Nummer (Deutsch/Englisch)", "Name or number (German/English)"), text: $query)
