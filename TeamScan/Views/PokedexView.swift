@@ -41,9 +41,8 @@ struct PokedexView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                LazyVStack(spacing: 14, pinnedViews: [.sectionHeaders]) {
-                    header
-                    Section {
+                LazyVStack(spacing: 14) {
+                    controls
                     if showFavorites {
                         let favs = favoriteEntries
                         if favs.isEmpty {
@@ -74,17 +73,25 @@ struct PokedexView: View {
                             ContentUnavailableView.search(text: query).padding(.top, 40)
                         }
                     }
-                    } header: {
-                        controls
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
-                            .background(Color(.systemGroupedBackground))
-                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
             .scrollDismissesKeyboard(.immediately)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                header
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 22)
+                    .background {
+                        LinearGradient(stops: [
+                            .init(color: Color(.systemGroupedBackground), location: 0),
+                            .init(color: Color(.systemGroupedBackground).opacity(0.92), location: 0.6),
+                            .init(color: Color(.systemGroupedBackground).opacity(0), location: 1),
+                        ], startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea(edges: .top)
+                        .allowsHitTesting(false)
+                    }
+            }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Pokédex")
             .toolbar(.hidden, for: .navigationBar)
@@ -94,12 +101,12 @@ struct PokedexView: View {
         }
     }
 
-    /// Title and search field – they scroll away with the list.
+    /// Title and search field – they stay at the top while the list scrolls underneath.
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Pokédex")
                 .font(.largeTitle.weight(.bold))
-                .padding(.top, 8)
+                .padding(.top, 4)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField(L("Name oder Nummer (Deutsch/Englisch)", "Name or number (German/English)"), text: $query)
@@ -118,7 +125,8 @@ struct PokedexView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
-            .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
