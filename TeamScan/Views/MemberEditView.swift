@@ -152,7 +152,8 @@ struct MemberEditView: View {
             }
             ForEach(0..<4, id: \.self) { i in
                 Button { picker = .move(i) } label: {
-                    MoveRow(move: i < member.moves.count ? member.moves[i] : nil)
+                    MoveRow(move: i < member.moves.count ? member.moves[i] : nil,
+                            isZMove: i < member.moves.count && ZCrystal.zMoves(for: member, game: game).contains(member.moves[i].id))
                 }
                 .buttonStyle(.plain)
                 .swipeActions {
@@ -160,6 +161,10 @@ struct MemberEditView: View {
                         Button(role: .destructive) { member.setMove(nil, at: i) } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
                     }
                 }
+            }
+            if let hint = ZCrystal.hint(for: member, game: game) {
+                Label { Text(hint).font(.footnote) } icon: { MechanicLogo(mechanic: .zMove, size: 18) }
+                    .foregroundStyle(.secondary)
             }
         } header: {
             Text(L("Attacken", "Moves"))
@@ -266,8 +271,14 @@ struct MemberEditView: View {
             }
         } header: {
             HStack(spacing: 6) {
-                GameMechanicIcon(game: game, size: 16)
-                Text(game.mechanic)
+                if game.hasZMoves {
+                    // Z-Moves come from the held Z-Crystal and are marked in the moves list
+                    MechanicLogo(mechanic: .mega, size: 16)
+                    Text(L("Mega-Entwicklung", "Mega Evolution"))
+                } else {
+                    GameMechanicIcon(game: game, size: 16)
+                    Text(game.mechanic)
+                }
             }
         }
     }
@@ -415,6 +426,7 @@ struct MemberEditView: View {
 
 struct MoveRow: View {
     let move: DexMove?
+    var isZMove = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -423,7 +435,19 @@ struct MoveRow: View {
                 .frame(width: 5, height: 36)
             if let move {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(move.name).font(.body.weight(.semibold))
+                    HStack(spacing: 6) {
+                        Text(move.name).font(.body.weight(.semibold))
+                        if isZMove {
+                            HStack(spacing: 3) {
+                                MechanicLogo(mechanic: .zMove, size: 13)
+                                Text("Z").font(.caption2.weight(.heavy))
+                            }
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.yellow.opacity(0.2), in: Capsule())
+                            .foregroundStyle(.yellow)
+                            .accessibilityLabel(L("Wird zur Z-Attacke", "Becomes a Z-Move"))
+                        }
+                    }
                     HStack(spacing: 6) {
                         TypeBadge(typeId: move.t, small: true)
                         CategoryBadge(category: move.c)

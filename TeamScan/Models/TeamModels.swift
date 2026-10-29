@@ -159,3 +159,81 @@ enum StatNames {
     }
     static let showdown = ["HP", "Atk", "Def", "SpA", "SpD", "Spe"]
 }
+
+
+// MARK: - Z-Moves (Sun / Moon)
+
+enum ZCrystal {
+    /// type Z-Crystals: item key prefix -> type id
+    private static let typeCrystals: [String: Int] = [
+        "normalium": T.normal, "fightinium": T.fighting, "flyinium": T.flying, "poisonium": T.poison,
+        "groundium": T.ground, "rockium": T.rock, "buginium": T.bug, "ghostium": T.ghost, "steelium": T.steel,
+        "firium": T.fire, "waterium": T.water, "grassium": T.grass, "electrium": T.electric, "psychium": T.psychic,
+        "icium": T.ice, "dragonium": T.dragon, "darkinium": T.dark, "fairium": T.fairy,
+    ]
+
+    /// species Z-Crystals: item key prefix -> (move key, allowed species, required form key)
+    private static let speciesCrystals: [String: (move: String, species: Set<Int>, form: String?)] = [
+        "pikanium": ("volt-tackle", [25], nil),
+        "pikashunium": ("thunderbolt", [25], nil),
+        "aloraichium": ("thunderbolt", [26], "raichu-alola"),
+        "decidium": ("spirit-shackle", [724], nil),
+        "incinium": ("darkest-lariat", [727], nil),
+        "primarium": ("sparkling-aria", [730], nil),
+        "eevium": ("last-resort", [133], nil),
+        "snorlium": ("giga-impact", [143], nil),
+        "mewnium": ("psychic", [151], nil),
+        "marshadium": ("spectral-thief", [802], nil),
+        "tapunium": ("natures-madness", [785, 786, 787, 788], nil),
+        "kommonium": ("clanging-scales", [784], nil),
+        "lycanium": ("stone-edge", [745], nil),
+        "mimikium": ("play-rough", [778], nil),
+        "solganium": ("sunsteel-strike", [791, 800], nil),
+        "lunalium": ("moongeist-beam", [792, 800], nil),
+        "ultranecrozium": ("photon-geyser", [800], nil),
+    ]
+
+    private static func prefix(_ item: DexItem) -> String {
+        String(item.key.split(separator: "-").first ?? "")
+    }
+
+    /// Moves of this Pokémon that become a Z-Move with the held item.
+    static func zMoves(for member: TeamMember, game: Game) -> Set<Int> {
+        guard game.hasZMoves, let item = member.item, item.isZCrystal, let p = member.species else { return [] }
+        let key = prefix(item)
+        if let type = typeCrystals[key] {
+            return Set(member.moves.filter { $0.t == type }.map(\.id))
+        }
+        if let rule = speciesCrystals[key], rule.species.contains(p.sp), rule.form == nil || rule.form == p.key {
+            return Set(member.moves.filter { $0.key == rule.move }.map(\.id))
+        }
+        return []
+    }
+
+    /// Short explanation for the editor, e.g. "Pikanium Z: Volt Tackle becomes a Z-Move".
+    static func hint(for member: TeamMember, game: Game) -> String? {
+        guard game.hasZMoves, let item = member.item, item.isZCrystal, let p = member.species else { return nil }
+        let key = prefix(item)
+        let ids = zMoves(for: member, game: game)
+        let names = member.moves.filter { ids.contains($0.id) }.map(\.name)
+        if let type = typeCrystals[key], let t = Dex.shared.type(type) {
+            return names.isEmpty
+                ? L("\(item.name): Gib \(member.displayName) eine \(t.name)-Attacke, damit daraus eine Z-Attacke wird.",
+                    "\(item.name): Give \(member.displayName) a \(t.name) move to turn it into a Z-Move.")
+                : L("\(item.name): \(names.joined(separator: ", ")) \(names.count == 1 ? "wird" : "werden") zur Z-Attacke.",
+                    "\(item.name): \(names.joined(separator: ", ")) \(names.count == 1 ? "becomes a" : "become") Z-Move\(names.count == 1 ? "" : "s").")
+        }
+        if let rule = speciesCrystals[key] {
+            let moveName = Dex.shared.moves.first { $0.key == rule.move }?.name ?? rule.move
+            if !rule.species.contains(p.sp) || (rule.form != nil && rule.form != p.key) {
+                return L("\(item.name) funktioniert nur bei einem bestimmten Pokémon – nicht bei \(member.displayName).",
+                         "\(item.name) only works for a specific Pokémon – not for \(member.displayName).")
+            }
+            return names.isEmpty
+                ? L("\(item.name): \(member.displayName) braucht \(moveName) für seine eigene Z-Attacke.",
+                    "\(item.name): \(member.displayName) needs \(moveName) for its exclusive Z-Move.")
+                : L("\(item.name): \(moveName) wird zur exklusiven Z-Attacke.", "\(item.name): \(moveName) becomes its exclusive Z-Move.")
+        }
+        return nil
+    }
+}
