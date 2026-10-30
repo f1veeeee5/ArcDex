@@ -696,8 +696,9 @@ extension EnvironmentValues {
 extension View {
     /// Use on sliders / steppers inside the editor: while a finger is on them, swiping never switches the Pokémon.
     func holdsPagerSwipe(_ lock: PagerSwipeLock?) -> some View {
+        // starts only after a few points of movement – a plain tap (stepper +/−) must reach the control
         simultaneousGesture(
-            DragGesture(minimumDistance: 0)
+            DragGesture(minimumDistance: 4)
                 .onChanged { _ in lock?.scrolling = true }
                 .onEnded { _ in
                     lock?.scrolling = false
