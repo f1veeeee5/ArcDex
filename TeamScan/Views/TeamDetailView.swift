@@ -86,7 +86,12 @@ struct TeamDetailView: View {
                 SectionHeader(title: L("Typ-Abdeckung", "Type coverage"), icon: "shield.lefthalf.filled")
                 CoverageView(analysis: analysis)
 
-                SectionHeader(title: L("Tipps", "Tips"), icon: "lightbulb")
+                if !members.isEmpty {
+                    SectionHeader(title: L("Team-Werte", "Team stats"), icon: "chart.bar.fill")
+                    TeamStatsView(members: members, game: game)
+                }
+
+                SectionHeader(title: L("Tipps", "Tips"), icon: "checklist")
                 TipsView(tips: analysis.tips)
             }
             .padding(.horizontal, 16)

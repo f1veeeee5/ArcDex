@@ -123,28 +123,48 @@ struct TipsView: View {
             ForEach(tips) { tip in
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: icon(tip.level))
-                        .font(.title3)
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(color(tip.level))
-                        .frame(width: 28)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(tip.title).font(.subheadline.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .background(color(tip.level).opacity(0.15), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(tip.title).font(.subheadline.weight(.semibold))
+                            Spacer(minLength: 4)
+                            Text(label(tip.level))
+                                .font(.system(size: 10, weight: .heavy))
+                                .textCase(.uppercase)
+                                .foregroundStyle(color(tip.level))
+                        }
                         Text(tip.detail).font(.subheadline).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer(minLength: 0)
                 }
                 .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .card()
+                .overlay(alignment: .leading) {
+                    Capsule().fill(color(tip.level).gradient).frame(width: 4).padding(.vertical, 14)
+                }
             }
         }
     }
 
     private func icon(_ l: Tip.Level) -> String {
         switch l {
-        case .problem: return "exclamationmark.octagon.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .info: return "lightbulb.fill"
-        case .good: return "checkmark.seal.fill"
+        case .problem: return "xmark"
+        case .warning: return "exclamationmark"
+        case .info: return "info"
+        case .good: return "checkmark"
+        }
+    }
+
+    private func label(_ l: Tip.Level) -> String {
+        switch l {
+        case .problem: return L("Problem", "Problem")
+        case .warning: return L("Achtung", "Heads-up")
+        case .info: return L("Hinweis", "Note")
+        case .good: return L("Top", "Great")
         }
     }
 
@@ -155,5 +175,110 @@ struct TipsView: View {
         case .info: return .blue
         case .good: return .green
         }
+    }
+}
+
+// MARK: - Team stats
+
+/// Average base stats of the team and who moves first.
+struct TeamStatsView: View {
+    let members: [TeamMember]
+    let game: Game
+
+    private static let statColors: [Color] = [.green, .red, .orange, .blue, .teal, .pink]
+
+    var body: some View {
+        let forms = members.compactMap { m -> (TeamMember, DexPokemon)? in
+            guard let p = m.battleForm(in: game) ?? m.species else { return nil }
+            return (m, p)
+        }
+        let count = Double(max(forms.count, 1))
+        let averages = (0..<6).map { i in Double(forms.reduce(0) { $0 + $1.1.s[i] }) / count }
+        let totals = (0..<6).map { i in forms.reduce(0) { $0 + $1.1.s[i] } }
+        let bst = averages.reduce(0, +)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(spacing: 8) {
+                ForEach(0..<6, id: \.self) { i in
+                    HStack(spacing: 10) {
+                        Text(StatNames.short[i])
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 58, alignment: .leading)
+                        Text("\(Int(averages[i].rounded()))")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .frame(width: 34, alignment: .trailing)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color(.tertiarySystemFill))
+                                Capsule().fill(Self.statColors[i].gradient)
+                                    .frame(width: geo.size.width * min(averages[i] / 150, 1))
+                            }
+                        }
+                        .frame(height: 8)
+                        Text("Σ \(totals[i])")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+            }
+            HStack {
+                Text(L("Ø Basiswert-Summe", "Ø base stat total")).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Text("\(Int(bst.rounded()))").font(.subheadline.weight(.bold).monospacedDigit())
+            }
+
+            FlowLayout(spacing: 6) {
+                ForEach(verdicts(averages), id: \.self) { text in
+                    Text(text)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                }
+            }
+
+            if forms.count > 1 {
+                Divider()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L("Wer ist am schnellsten?", "Who moves first?")).font(.subheadline.weight(.semibold))
+                    ForEach(Array(forms.sorted { speed($0) > speed($1) }.enumerated()), id: \.offset) { i, entry in
+                        HStack(spacing: 10) {
+                            Text("\(i + 1).").font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(.secondary).frame(width: 20)
+                            PokemonSprite(pokemonId: entry.1.id, shiny: entry.0.shiny).frame(width: 32, height: 32)
+                            Text(entry.0.displayName).font(.subheadline).lineLimit(1)
+                            Spacer()
+                            Text("\(speed(entry))").font(.subheadline.weight(.semibold).monospacedDigit())
+                        }
+                    }
+                    Text(game.hasEVs
+                         ? L("Echte Initiative auf dem jeweiligen Level (mit EVs, IVs und Wesen).", "Real Speed at each level (with EVs, IVs and nature).")
+                         : L("Basiswert Initiative.", "Base Speed."))
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(16)
+        .card()
+    }
+
+    private func speed(_ entry: (TeamMember, DexPokemon)) -> Int {
+        guard game.hasEVs else { return entry.1.s[5] }
+        return entry.0.stat(5, base: entry.1.s[5], level: game.fixedLevel ?? entry.0.level, game: game)
+    }
+
+    /// Short assessment from the average base stats.
+    private func verdicts(_ a: [Double]) -> [String] {
+        var list: [String] = []
+        let spe = a[5]
+        if spe >= 95 { list.append(L("⚡️ Schnelles Team", "⚡️ Fast team")) }
+        else if spe <= 60 { list.append(L("🐢 Langsames Team – Bizarroraum passt", "🐢 Slow team – Trick Room fits")) }
+        else { list.append(L("Mittleres Tempo", "Medium speed")) }
+        if a[1] > a[3] * 1.2 { list.append(L("Eher physisch", "Mostly physical")) }
+        else if a[3] > a[1] * 1.2 { list.append(L("Eher speziell", "Mostly special")) }
+        else { list.append(L("Gemischt angreifend", "Mixed attackers")) }
+        let bulk = (a[0] + a[2] + a[4]) / 3
+        if bulk >= 90 { list.append(L("🛡️ Robust", "🛡️ Bulky")) }
+        else if bulk <= 65 { list.append(L("Eher zerbrechlich", "Rather frail")) }
+        return list
     }
 }
