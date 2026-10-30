@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("animatedSprites") private var animatedSprites = true
     @AppStorage("animatedFallback") private var animatedFallback = false
     @AppStorage("showMovesetTips") private var showMovesetTips = true
+    @AppStorage("appearance") private var appearance = Appearance.system.rawValue
 
     var body: some View {
         NavigationStack {
@@ -22,6 +23,13 @@ struct SettingsView: View {
                 } footer: {
                     Text(L("Gilt für die App und alle Pokémon-, Attacken- und Item-Namen. Der Scanner erkennt immer Deutsch und Englisch.",
                            "Applies to the app and all Pokémon, move and item names. The scanner always reads German and English."))
+                }
+
+                Section(L("Darstellung", "Appearance")) {
+                    Picker(L("Darstellung", "Appearance"), selection: $appearance) {
+                        ForEach(Appearance.allCases) { Text($0.label).tag($0.rawValue) }
+                    }
+                    .pickerStyle(.segmented)
                 }
 
                 Section {
@@ -146,6 +154,29 @@ struct ShowdownImportView: View {
                     .disabled(parsed.members.isEmpty)
                 }
             }
+        }
+    }
+}
+
+
+/// Light / dark mode of the app.
+enum Appearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: return L("System", "System")
+        case .light: return L("Hell", "Light")
+        case .dark: return L("Dunkel", "Dark")
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
         }
     }
 }
