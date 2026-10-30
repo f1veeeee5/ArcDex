@@ -215,10 +215,12 @@ struct TeamStatsView: View {
                             }
                         }
                         .frame(height: 8)
-                        Text("Σ \(totals[i])")
+                        Text(verbatim: "Σ \(totals[i])")
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.tertiary)
-                            .frame(width: 44, alignment: .trailing)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .frame(minWidth: 44, alignment: .trailing)
                     }
                 }
             }

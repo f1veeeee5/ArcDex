@@ -340,10 +340,12 @@ struct MemberEditView: View {
                             .frame(height: 8)
                         }
                         if showsRealStats {
-                            Text("\(member.stat(i, base: value, level: statLevel, game: game))")
+                            Text(verbatim: String(member.stat(i, base: value, level: statLevel, game: game)))
                                 .font(.caption.monospacedDigit().weight(.bold))
                                 .foregroundStyle(up ? .red : (down ? .blue : .primary))
-                                .frame(width: 36, alignment: .trailing)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .frame(minWidth: 36, alignment: .trailing)
                         }
                     }
                 }
@@ -352,9 +354,12 @@ struct MemberEditView: View {
                     Spacer()
                     Text("\(form.s.reduce(0, +))").font(.caption.weight(.bold).monospacedDigit())
                     if showsRealStats {
-                        Text("\((0..<6).map { member.stat($0, base: form.s[$0], level: statLevel, game: game) }.reduce(0, +))")
+                        // no thousands separator and never wrapped (totals at Lv. 100 have 4 digits)
+                        Text(verbatim: String((0..<6).map { member.stat($0, base: form.s[$0], level: statLevel, game: game) }.reduce(0, +)))
                             .font(.caption.weight(.bold).monospacedDigit())
-                            .frame(width: 36, alignment: .trailing)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .frame(minWidth: 36, alignment: .trailing)
                     }
                 }
             }
