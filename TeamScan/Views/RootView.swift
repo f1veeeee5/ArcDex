@@ -75,8 +75,11 @@ struct RootView: View {
                 TeamDetailView(team: team, path: $path)
             }
             .navigationDestination(for: TeamMember.self) { member in
-                MemberEditView(member: member, game: member.team?.game ?? .swsh)
-                    .onDisappear { member.team?.touch() }
+                if let team = member.team {
+                    MemberPagerView(team: team, start: member)
+                } else {
+                    MemberEditView(member: member, game: .swsh)
+                }
             }
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)

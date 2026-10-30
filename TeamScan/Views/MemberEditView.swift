@@ -4,6 +4,8 @@ import SwiftData
 struct MemberEditView: View {
     @Bindable var member: TeamMember
     let game: Game
+    /// true inside the swipe pager – the pager then shows title and toolbar itself
+    var embedded = false
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
@@ -49,16 +51,7 @@ struct MemberEditView: View {
                        "Scanning the summary detects Pokémon, level, item, ability, nature and visible moves."))
             }
         }
-        .navigationTitle(member.displayName)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: DexRoute(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, game: game)) {
-                    Image(systemName: "book.closed")
-                }
-                .accessibilityLabel(L("Im Pokédex ansehen", "View in Pokédex"))
-            }
-        }
+        .modifier(EditorChrome(enabled: !embedded, member: member, game: game))
         .sheet(item: $picker) { p in pickerSheet(p) }
         .sheet(isPresented: $showMoveScan) {
             MoveScanSheet(member: member, game: game)
@@ -156,11 +149,8 @@ struct MemberEditView: View {
                             isZMove: i < member.moves.count && ZCrystal.zMoves(for: member, game: game).contains(member.moves[i].id))
                 }
                 .buttonStyle(.plain)
-                .swipeActions {
-                    if i < member.moveIds.count {
-                        Button(role: .destructive) { member.setMove(nil, at: i) } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
-                    }
-                }
+                // no swipe-to-delete here: horizontal swipes switch to the next Pokémon.
+                // Removing a move works via "None" in the move picker.
             }
             if let hint = ZCrystal.hint(for: member, game: game) {
                 Label { Text(hint).font(.footnote) } icon: { MechanicLogo(mechanic: .zMove, size: 18) }
@@ -462,5 +452,72 @@ struct MoveRow: View {
             Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
+    }
+}
+
+
+/// Title and Pokédex button of the editor (left out when the pager shows them).
+private struct EditorChrome: ViewModifier {
+    let enabled: Bool
+    let member: TeamMember
+    let game: Game
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .navigationTitle(member.displayName)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { PokedexLinkButton(member: member, game: game) }
+                }
+        } else {
+            content
+        }
+    }
+}
+
+struct PokedexLinkButton: View {
+    let member: TeamMember
+    let game: Game
+
+    var body: some View {
+        NavigationLink(value: DexRoute(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, game: game)) {
+            Image(systemName: "book.closed")
+        }
+        .accessibilityLabel(L("Im Pokédex ansehen", "View in Pokédex"))
+    }
+}
+
+/// Swipe left / right to go through the team. Opens on the tapped Pokémon.
+struct MemberPagerView: View {
+    let team: Team
+    @State private var selection: UUID
+
+    init(team: Team, start: TeamMember) {
+        self.team = team
+        _selection = State(initialValue: start.uuid)
+    }
+
+    var body: some View {
+        let members = team.sortedMembers
+        let game = team.game
+        let current = members.first { $0.uuid == selection } ?? members.first
+        TabView(selection: $selection) {
+            ForEach(members) { m in
+                MemberEditView(member: m, game: game, embedded: true)
+                    .tag(m.uuid)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle(current?.displayName ?? "")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let current {
+                ToolbarItem(placement: .topBarTrailing) { PokedexLinkButton(member: current, game: game) }
+            }
+        }
+        .sensoryFeedback(.selection, trigger: selection)
+        .onDisappear { team.touch() }
     }
 }
