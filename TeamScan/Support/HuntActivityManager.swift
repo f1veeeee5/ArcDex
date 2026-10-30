@@ -6,7 +6,7 @@ import UIKit
 enum AppData {
     static let container: ModelContainer = {
         do {
-            return try ModelContainer(for: Team.self, TeamMember.self, FavoritePokemon.self, Savegame.self, ShinyHunt.self)
+            return try ModelContainer(for: Team.self, TeamMember.self, FavoritePokemon.self, Savegame.self, ShinyHunt.self, NuzlockeLink.self)
         } catch {
             fatalError("Could not open the database: \(error)")
         }

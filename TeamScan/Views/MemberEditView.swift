@@ -45,8 +45,25 @@ struct MemberEditView: View {
                 Button { showSummaryScan = true } label: {
                     Label(L("Übersichtsseite scannen", "Scan summary screen"), systemImage: "text.viewfinder")
                 }
-                Button(role: .destructive) { confirmDelete = true } label: {
-                    Label(L("Aus dem Team entfernen", "Remove from team"), systemImage: "trash")
+                if let link = member.link, let run = link.savegame {
+                    Button {
+                        NuzlockeActions.set(link, to: .box, in: run, context: context)
+                        dismiss()
+                    } label: {
+                        Label(run.mode == .soulLink ? L("In die Box (beide)", "To box (both)") : L("In die Box", "To box"), systemImage: "archivebox")
+                    }
+                    .disabled(link.status != .team)
+                    Button(role: .destructive) {
+                        NuzlockeActions.set(link, to: .dead, in: run, context: context)
+                        dismiss()
+                    } label: {
+                        Label(run.mode == .soulLink ? L("Gestorben (beide)", "Fainted (both)") : L("Gestorben", "Fainted"), systemImage: "xmark.seal")
+                    }
+                    .disabled(link.status == .dead)
+                } else {
+                    Button(role: .destructive) { confirmDelete = true } label: {
+                        Label(L("Aus dem Team entfernen", "Remove from team"), systemImage: "trash")
+                    }
                 }
             } footer: {
                 Text(L("Beim Scannen der Übersicht werden Pokémon, Level, Item, Fähigkeit, Wesen und sichtbare Attacken erkannt.",
@@ -170,6 +187,7 @@ struct MemberEditView: View {
             HStack {
                 Text(L("Spitzname", "Nickname"))
                 TextField(species?.name ?? "", text: $member.nickname)
+                    .onChange(of: member.nickname) { NuzlockeActions.nicknameChanged(member) }
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.words)
             }

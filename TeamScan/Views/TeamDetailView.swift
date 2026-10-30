@@ -21,6 +21,13 @@ struct TeamDetailView: View {
     @State private var confirmDelete = false
     @State private var dragging: TeamMember?
     @State private var dragActive = false
+    @State private var newEncounter: EncounterPreset?
+
+    /// Team of a Nuzlocke / Soul Link run – Pokémon come and go through the run (catch, box, graveyard).
+    private var run: Savegame? {
+        guard team.player > 0, let save = team.savegame, save.mode.isRun else { return nil }
+        return save
+    }
 
     private var members: [TeamMember] { team.sortedMembers }
     private var game: Game { team.game }
@@ -48,11 +55,24 @@ struct TeamDetailView: View {
                             .contextMenu {
                                 Button { move(m, by: -1) } label: { Label(L("Nach vorne", "Move up"), systemImage: "arrow.left") }
                                 Button { move(m, by: 1) } label: { Label(L("Nach hinten", "Move down"), systemImage: "arrow.right") }
-                                Button(role: .destructive) { remove(m) } label: { Label(L("Entfernen", "Remove"), systemImage: "trash") }
+                                if let run, let link = m.link {
+                                    Button { NuzlockeActions.set(link, to: .box, in: run, context: context) } label: {
+                                        Label(run.mode == .soulLink ? L("In die Box (beide)", "To box (both)") : L("In die Box", "To box"), systemImage: "archivebox")
+                                    }
+                                    Button(role: .destructive) { NuzlockeActions.set(link, to: .dead, in: run, context: context) } label: {
+                                        Label(run.mode == .soulLink ? L("Gestorben (beide)", "Fainted (both)") : L("Gestorben", "Fainted"), systemImage: "xmark.seal")
+                                    }
+                                } else {
+                                    Button(role: .destructive) { remove(m) } label: { Label(L("Entfernen", "Remove"), systemImage: "trash") }
+                                }
                             }
                     }
                     if !team.isFull {
-                        AddMemberCard(onAdd: { showAdd = true }, onScan: { showScan = true })
+                        if run != nil {
+                            AddMemberCard(onAdd: { newEncounter = EncounterPreset() }, onScan: nil)
+                        } else {
+                            AddMemberCard(onAdd: { showAdd = true }, onScan: { showScan = true })
+                        }
                     }
                 }
 
@@ -74,6 +94,7 @@ struct TeamDetailView: View {
             .onDrop(of: [.text], isTargeted: nil) { _ in
                 dragging = nil
                 dragActive = false
+                NuzlockeActions.mirrorOrder(from: team)
                 return true
             }
         }
@@ -96,13 +117,16 @@ struct TeamDetailView: View {
                     ShareLink(item: Showdown.export(team: team)) {
                         Label(L("Als Showdown-Text teilen", "Share as Showdown text"), systemImage: "square.and.arrow.up")
                     }
-                    Button { showScan = true } label: { Label(L("Pokémon scannen", "Scan Pokémon"), systemImage: "camera.viewfinder") }
-                        .disabled(team.isFull)
+                    if run == nil {
+                        Button { showScan = true } label: { Label(L("Pokémon scannen", "Scan Pokémon"), systemImage: "camera.viewfinder") }
+                            .disabled(team.isFull)
+                    }
                     Picker(selection: $styleRaw) {
                         ForEach(SpriteStyle.allCases) { Text($0.label).tag($0.rawValue) }
                     } label: { Label(L("Sprites", "Sprites"), systemImage: "photo") }
+                    if run == nil {
                     Menu {
-                        ForEach(saves) { save in
+                        ForEach(saves.filter { !$0.mode.isRun }) { save in
                             Button {
                                 team.savegame = save
                                 team.game = save.game
@@ -120,6 +144,7 @@ struct TeamDetailView: View {
                     Divider()
                     Button { renameText = team.name; showRename = true } label: { Label(L("Umbenennen", "Rename"), systemImage: "pencil") }
                     Button(role: .destructive) { confirmDelete = true } label: { Label(L("Team löschen", "Delete team"), systemImage: "trash") }
+                    }
                 } label: { Image(systemName: "ellipsis") }
             }
         }
@@ -140,6 +165,9 @@ struct TeamDetailView: View {
                 guard let id else { return }
                 pendingEdit = addMember(pokemonId: id)
             }
+        }
+        .sheet(item: $newEncounter) { preset in
+            if let run { EncounterSheet(save: run, preset: preset) }
         }
         .sheet(isPresented: $showScan) {
             MemberScanSheet(game: game, mode: .team) { scanned in
@@ -216,6 +244,7 @@ struct TeamDetailView: View {
         guard list.indices.contains(j) else { return }
         list.swapAt(i, j)
         for (k, member) in list.enumerated() { member.order = k }
+        NuzlockeActions.mirrorOrder(from: team)
         team.touch()
     }
 }
@@ -246,6 +275,7 @@ struct MemberDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         dragging = nil
         active = false
+        NuzlockeActions.mirrorOrder(from: team)
         team.touch()
         return true
     }
@@ -340,7 +370,7 @@ struct MechanicChip: View {
 
 struct AddMemberCard: View {
     var onAdd: () -> Void
-    var onScan: () -> Void
+    var onScan: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 10) {
@@ -349,10 +379,12 @@ struct AddMemberCard: View {
                 Label(L("Hinzufügen", "Add"), systemImage: "plus").frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            Button(action: onScan) {
-                Label(L("Scannen", "Scan"), systemImage: "camera.viewfinder").frame(maxWidth: .infinity)
+            if let onScan {
+                Button(action: onScan) {
+                    Label(L("Scannen", "Scan"), systemImage: "camera.viewfinder").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
             Spacer(minLength: 0)
         }
         .padding(14)

@@ -81,7 +81,11 @@ struct RootView: View {
                 }
             }
             .navigationDestination(for: Savegame.self) { save in
-                SavegameDetailView(save: save, path: $path)
+                if save.mode.isRun {
+                    NuzlockeRunView(save: save, path: $path)
+                } else {
+                    SavegameDetailView(save: save, path: $path)
+                }
             }
             .navigationDestination(for: Team.self) { team in
                 TeamDetailView(team: team, path: $path)
@@ -90,7 +94,7 @@ struct RootView: View {
                 if let team = member.team {
                     MemberPagerView(team: team, start: member)
                 } else {
-                    MemberEditView(member: member, game: .swsh)
+                    MemberEditView(member: member, game: member.link?.savegame?.game ?? .swsh)
                 }
             }
             .navigationDestination(for: ShinyHunt.self) { hunt in
@@ -183,12 +187,19 @@ struct SavegameCard: View {
             }
 
             HStack(spacing: 8) {
+                if save.mode.isRun {
+                    StatPill(icon: save.mode.icon, text: save.mode.title, highlight: true)
+                    StatPill(icon: "heart.fill", text: L("\(save.links(.team).count + save.links(.box).count) leben", "\(save.links(.team).count + save.links(.box).count) alive"))
+                    let dead = save.links(.dead).count
+                    if dead > 0 { StatPill(icon: "xmark.seal.fill", text: L("\(dead) tot", "\(dead) fainted")) }
+                } else {
                 StatPill(icon: "square.grid.2x2.fill", text: "\(save.teams.count) \(save.teams.count == 1 ? "Team" : "Teams")")
                 if game.hasShinyHunting {
                     StatPill(icon: "scope", text: "\(hunts.count) \(hunts.count == 1 ? "Hunt" : "Hunts")", highlight: !hunts.isEmpty)
                     if found > 0 {
                         StatPill(icon: "sparkles", text: "\(found) Shiny\(found == 1 ? "" : "s")", highlight: true)
                     }
+                }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)

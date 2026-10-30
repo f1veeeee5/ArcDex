@@ -249,6 +249,9 @@ struct SavegameEditSheet: View {
     @State private var game: Game?
     @State private var platform: Platform = .switch1
     @State private var name = ""
+    @State private var mode: RunMode = .normal
+    @State private var player1 = ""
+    @State private var player2 = ""
     @State private var loaded = false
 
     var body: some View {
@@ -285,6 +288,9 @@ struct SavegameEditSheet: View {
                 game = save.game
                 platform = save.platform
                 name = save.name
+                mode = save.mode
+                player1 = save.player1
+                player2 = save.player2
             }
         }
     }
@@ -312,13 +318,46 @@ struct SavegameEditSheet: View {
                         Label(p.title, systemImage: p.icon).tag(p)
                     }
                 }
-                TextField(L("Name (optional, z. B. Nuzlocke)", "Name (optional, e.g. Nuzlocke)"), text: $name)
+                TextField(L("Name (optional, z. B. Randomizer)", "Name (optional, e.g. Randomizer)"), text: $name)
             } footer: {
                 Text(L("Ohne Namen wird der Spieltitel angezeigt.", "Without a name the game title is shown."))
+            }
+            Section {
+                Picker(L("Modus", "Mode"), selection: $mode) {
+                    ForEach(RunMode.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .disabled(save != nil && !(save?.links.isEmpty ?? true))
+                if mode == .soulLink {
+                    TextField(L("Name Spieler 1", "Player 1 name"), text: $player1)
+                    TextField(L("Name Spieler 2", "Player 2 name"), text: $player2)
+                }
+            } header: {
+                Text(L("Spielart", "Play style"))
+            } footer: {
+                Text(modeFooter)
             }
         }
         .onChange(of: self.game) { _, new in
             if let new, !Platform.options(for: new).contains(platform) { platform = Platform.defaultPlatform(for: new) }
+        }
+    }
+
+    private var modeFooter: String {
+        switch mode {
+        case .normal: return L("Teams und Shiny-Hunts wie gewohnt.", "Teams and shiny hunts as usual.")
+        case .nuzlocke: return L("Ein Run mit Routen, Box, Friedhof und eigenen Regeln.", "A run with routes, box, graveyard and its own rules.")
+        case .soulLink: return L("Zwei Spieler, ein Handy: Pokémon von derselben Route werden verlinkt – gleicher Spitzname, gleicher Slot, sterben gemeinsam.",
+                                 "Two players, one phone: Pokémon from the same route are linked – same nickname, same slot, they faint together.")
+        }
+    }
+
+    /// Run save files get one team per player; team names follow the player names.
+    private func prepareRun(_ save: Savegame) {
+        guard save.mode.isRun else { return }
+        for p in save.players {
+            let team = save.runTeam(p, context: context)
+            team.name = save.playerName(p)
         }
     }
 
@@ -333,11 +372,19 @@ struct SavegameEditSheet: View {
             }
             save.platform = platform
             save.name = trimmed
+            save.mode = mode
+            save.player1 = player1.trimmingCharacters(in: .whitespaces)
+            save.player2 = player2.trimmingCharacters(in: .whitespaces)
+            prepareRun(save)
             save.touch()
             onSave(save)
         } else {
             let new = Savegame(game: game, platform: platform, name: trimmed)
             context.insert(new)
+            new.mode = mode
+            new.player1 = player1.trimmingCharacters(in: .whitespaces)
+            new.player2 = player2.trimmingCharacters(in: .whitespaces)
+            prepareRun(new)
             onSave(new)
         }
         dismiss()

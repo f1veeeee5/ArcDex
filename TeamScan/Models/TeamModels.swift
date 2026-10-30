@@ -14,6 +14,8 @@ final class Team {
     var members: [TeamMember] = []
     /// The save file this team belongs to (teams of older app versions are assigned on first launch).
     var savegame: Savegame?
+    /// Nuzlocke / Soul Link: 1 or 2 = the team of that player, 0 = normal team
+    var player: Int = 0
 
     init(name: String, game: Game) {
         self.name = name
@@ -60,6 +62,9 @@ final class TeamMember {
     var evs: [Int] = [0, 0, 0, 0, 0, 0]
     var ivs: [Int] = [31, 31, 31, 31, 31, 31]
     var team: Team?
+    /// Nuzlocke encounter this Pokémon belongs to (and which player caught it)
+    var link: NuzlockeLink?
+    var player: Int = 0
 
     init(pokemonId: Int, order: Int, level: Int = 50) {
         self.pokemonId = pokemonId

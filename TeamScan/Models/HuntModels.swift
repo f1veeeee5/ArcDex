@@ -87,6 +87,13 @@ final class Savegame {
     var teams: [Team] = []
     @Relationship(deleteRule: .cascade, inverse: \ShinyHunt.savegame)
     var hunts: [ShinyHunt] = []
+    /// "normal", "nuzlocke" or "soulLink"
+    var modeRaw: String = RunMode.normal.rawValue
+    var rulesData: Data = Data()
+    var player1: String = ""
+    var player2: String = ""
+    @Relationship(deleteRule: .cascade, inverse: \NuzlockeLink.savegame)
+    var links: [NuzlockeLink] = []
 
     init(game: Game, platform: Platform? = nil, name: String = "") {
         self.gameRaw = game.rawValue
