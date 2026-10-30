@@ -97,11 +97,20 @@ extension TeamMember {
         }
     }
 
+    /// Puts a move into a slot. An existing move in that slot is replaced (not pushed down).
+    /// If the move is already in another slot, the two moves swap places.
     func setMove(_ moveId: Int?, at index: Int) {
         var list = moveIds
         if let moveId {
-            list.removeAll { $0 == moveId }
-            if index < list.count { list.insert(moveId, at: index) } else { list.append(moveId) }
+            if index < list.count {
+                if let other = list.firstIndex(of: moveId), other != index {
+                    list.swapAt(other, index)
+                } else {
+                    list[index] = moveId
+                }
+            } else if !list.contains(moveId) {
+                list.append(moveId)
+            }
         } else if index < list.count {
             list.remove(at: index)
         }
