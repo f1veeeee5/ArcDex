@@ -37,9 +37,14 @@ struct HuntView: View {
                 if !hunt.phases.isEmpty { phasesCard }
                 settingsSummary
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 16)
             .padding(.bottom, 40)
+            // exactly as wide as the screen – the page only scrolls up and down
+            .containerRelativeFrame(.horizontal)
+            .clipped()
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .background(Color(.systemGroupedBackground))
         .navigationTitle(hunt.name)
         .navigationBarTitleDisplayMode(.inline)
