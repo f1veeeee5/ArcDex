@@ -27,6 +27,7 @@ struct MemberEditView: View {
     @State private var showMoveScan = false
     @State private var showSummaryScan = false
     @State private var confirmDelete = false
+    @AppStorage("showMovesetTips") private var showMovesetTips = true
 
     private var dex: Dex { .shared }
     private var species: DexPokemon? { member.species }
@@ -35,6 +36,7 @@ struct MemberEditView: View {
         Form {
             heroSection
             movesSection
+            if showMovesetTips { MovesetSuggestionsSection(member: member, game: game) }
             detailsSection
             if game.hasMega || game.hasDynamax || game.hasTera { mechanicSection }
             statsSection

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("defaultLevel") private var defaultLevel = 50
     @AppStorage("animatedSprites") private var animatedSprites = true
     @AppStorage("animatedFallback") private var animatedFallback = false
+    @AppStorage("showMovesetTips") private var showMovesetTips = true
 
     var body: some View {
         NavigationStack {
@@ -50,7 +51,7 @@ struct SettingsView: View {
                              "Animations are only available for the pixel style – there is no complete source for 3D sprites."))
                 }
 
-                Section(L("Neue Pokémon", "New Pokémon")) {
+                Section {
                     Stepper(value: $defaultLevel, in: 1...100) {
                         HStack {
                             Text(L("Standard-Level", "Default level"))
@@ -58,10 +59,17 @@ struct SettingsView: View {
                             Text("\(defaultLevel)").monospacedDigit().foregroundStyle(.secondary)
                         }
                     }
+                    Toggle(L("Moveset-Vorschläge", "Moveset suggestions"), isOn: $showMovesetTips)
+                } header: {
+                    Text(L("Team-Builder", "Team builder"))
+                } footer: {
+                    Text(L("Zeigt im Pokémon-Editor fertige Sets (Story und Wettkampf), die du mit einem Tipp übernehmen kannst.",
+                           "Shows ready-made sets (playthrough and competitive) in the Pokémon editor that you can use with one tap."))
                 }
 
                 Section {
                     LabeledContent(L("Daten", "Data"), value: "PokéAPI")
+                    LabeledContent(L("Wettkampf-Sets", "Competitive sets"), value: "Pokémon Showdown (MIT)")
                     LabeledContent(L("Spiele", "Games"), value: "\(Game.allCases.count)")
                     LabeledContent(L("Pokémon", "Pokémon"), value: "\(Dex.shared.pokemon.count)")
                     LabeledContent(L("Attacken", "Moves"), value: "\(Dex.shared.moves.count)")
