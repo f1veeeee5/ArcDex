@@ -44,6 +44,10 @@ enum HuntIntentBridge {
 struct HuntCountIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Shiny-Zähler ändern"
     static let isDiscoverable = false
+    /// Counting must work on the locked Lock Screen – no Face ID / passcode needed.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    /// Never open the app for a button press.
+    static let openAppWhenRun = false
 
     @Parameter(title: "Hunt")
     var huntID: String
