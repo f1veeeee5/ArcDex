@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
     @AppStorage("animatedSprites") private var animatedSprites = true
+    @AppStorage("animatedFallback") private var animatedFallback = false
 
     var body: some View {
         NavigationStack {
@@ -29,6 +30,8 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     Toggle(L("Animierte Pixel-Sprites", "Animated pixel sprites"), isOn: $animatedSprites)
                         .disabled(styleRaw != SpriteStyle.pixel.rawValue)
+                    Toggle(L("Fehlende auch animieren", "Animate missing ones too"), isOn: $animatedFallback)
+                        .disabled(styleRaw != SpriteStyle.pixel.rawValue || !animatedSprites)
                     HStack(spacing: 20) {
                         Spacer()
                         AnimatedPokemonSprite(pokemonId: 6).frame(width: 90, height: 90)
@@ -36,13 +39,13 @@ struct SettingsView: View {
                             .overlay(alignment: .topTrailing) { ShinyBadge() }
                         Spacer()
                     }
-                    .id("\(styleRaw)-\(animatedSprites)")
+                    .id("\(styleRaw)-\(animatedSprites)-\(animatedFallback)")
                 } header: {
                     Text(L("Sprites", "Sprites"))
                 } footer: {
                     Text(styleRaw == SpriteStyle.pixel.rawValue
-                         ? L("Animierte Sprites laufen in der Pokédex-Detailseite und im Shiny-Hunt in Dauerschleife. Ausschalten spart Akku und Leistung auf älteren iPhones.",
-                             "Animated sprites loop on the Pokédex detail page and in shiny hunts. Turn them off to save battery and performance on older iPhones.")
+                         ? L("Animierte Sprites im Gen-5-Pixelstil laufen in der Pokédex-Detailseite und im Shiny-Hunt in Dauerschleife. Für manche neuere Pokémon (vor allem Gen 9) gibt es keine – die zeigen das normale Bild, außer du schaltest „Fehlende auch animieren“ ein (dann im 3D-artigen Showdown-Stil). Ausschalten spart Akku auf älteren iPhones.",
+                             "Animated Gen 5 style pixel sprites loop on the Pokédex detail page and in shiny hunts. Some newer Pokémon (mostly Gen 9) have none – they show the normal picture unless you turn on “Animate missing ones too” (then in the 3D-like Showdown style). Turn animations off to save battery on older iPhones.")
                          : L("Animationen gibt es nur für den Pixel-Stil – für 3D-Sprites gibt es keine vollständige Quelle.",
                              "Animations are only available for the pixel style – there is no complete source for 3D sprites."))
                 }

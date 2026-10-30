@@ -5,13 +5,19 @@ import ImageIO
 // MARK: - URLs
 
 extension SpriteURLs {
-    /// Animated 2D sprites (Showdown style) from the PokeAPI sprite repository.
-    static func animated(_ id: Int, shiny: Bool) -> [URL] {
-        let keys = Dex.shared.pokemon(id)?.spriteKeys ?? [String(id)]
+    /// Animated sprites in the Gen-5 pixel style (Black/White and community sprites for later Pokémon).
+    /// Only when `includeShowdown` is on, the Showdown animations (3D-like look) fill the gaps.
+    static func animated(_ id: Int, shiny: Bool, includeShowdown: Bool) -> [URL] {
+        // no fallback to the base species for real forms (Alola, Mega …) – a wrong animation is worse than a still image
+        let all = Dex.shared.pokemon(id)?.spriteKeys ?? [String(id)]
+        let keys = id >= 20000 ? all : Array(all.prefix(1))
         let s = shiny ? "shiny/" : ""
-        return keys.compactMap {
-            URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/\(s)\($0).gif")
+        let root = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/"
+        var list = keys.map { "\(root)versions/generation-v/black-white/animated/\(s)\($0).gif" }
+        if includeShowdown {
+            list += keys.map { "\(root)other/showdown/\(s)\($0).gif" }
         }
+        return list.compactMap(URL.init(string:))
     }
 }
 
@@ -109,6 +115,7 @@ struct AnimatedPokemonSprite: View {
     var shiny = false
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("animatedSprites") private var animatedOn = true
+    @AppStorage("animatedFallback") private var fallbackOn = false
     @State private var animation: GIFCache.Animation?
     @State private var missing = false
 
@@ -123,11 +130,11 @@ struct AnimatedPokemonSprite: View {
                 PokemonSprite(pokemonId: pokemonId, shiny: shiny)
             }
         }
-        .task(id: "\(pokemonId)-\(shiny)-\(wantsAnimation)") {
+        .task(id: "\(pokemonId)-\(shiny)-\(wantsAnimation)-\(fallbackOn)") {
             animation = nil
             missing = false
             guard wantsAnimation else { return }
-            for url in SpriteURLs.animated(pokemonId, shiny: shiny) {
+            for url in SpriteURLs.animated(pokemonId, shiny: shiny, includeShowdown: fallbackOn) {
                 if let a = await GIFCache.shared.animation(for: url) {
                     animation = a
                     return
