@@ -328,13 +328,17 @@ struct MemberEditView: View {
                         Text(names[i]).font(.caption.weight(.semibold)).frame(width: 64, alignment: .leading)
                             .foregroundStyle(up ? .red : (down ? .blue : .secondary))
                         Text("\(value)").font(.caption.monospacedDigit().weight(.bold)).frame(width: 30, alignment: .trailing)
-                        GeometryReader { geo in
-                            Capsule().fill(Color(.tertiarySystemFill))
-                                .overlay(alignment: .leading) {
-                                    Capsule().fill(statColor(value).gradient).frame(width: geo.size.width * min(Double(value) / 200, 1))
-                                }
+                        if showsRealStats {
+                            realStatBar(index: i, base: value)
+                        } else {
+                            GeometryReader { geo in
+                                Capsule().fill(Color(.tertiarySystemFill))
+                                    .overlay(alignment: .leading) {
+                                        Capsule().fill(statColor(value).gradient).frame(width: geo.size.width * min(Double(value) / 200, 1))
+                                    }
+                            }
+                            .frame(height: 8)
                         }
-                        .frame(height: 8)
                         if showsRealStats {
                             Text("\(member.stat(i, base: value, level: statLevel, game: game))")
                                 .font(.caption.monospacedDigit().weight(.bold))
@@ -364,12 +368,49 @@ struct MemberEditView: View {
             }
         } footer: {
             if showsRealStats {
-                Text(game.isChampions
-                     ? L("Rechts: echte Werte auf Level 50 mit deinen Punkten und deinem Wesen (rot = erhöht, blau = gesenkt).",
-                         "Right: real stats at level 50 with your points and nature (red = raised, blue = lowered).")
-                     : L("Rechts: echte Werte mit Level, EVs, IVs und Wesen.", "Right: real stats with level, EVs, IVs and nature."))
+                let realText = game.isChampions
+                    ? L("Rechts: echte Werte auf Level 50 mit deinen Punkten und deinem Wesen (rot = erhöht, blau = gesenkt).",
+                        "Right: real stats at level 50 with your points and nature (red = raised, blue = lowered).")
+                    : L("Rechts: echte Werte mit Level, EVs, IVs und Wesen.", "Right: real stats with level, EVs, IVs and nature.")
+                let barText = L("Balken: kräftig = Wert ohne EVs, hell = Zuwachs durch EVs und Wesen, blau = durch das Wesen gesenkt.",
+                                "Bars: solid = value without EVs, light = gain from EVs and nature, blue = lowered by the nature.")
+                Text("\(realText) \(barText)")
             }
         }
+    }
+
+    /// Real stat with chosen EVs / nature factor (IVs of the Pokémon).
+    private func realStat(_ i: Int, base: Int, ev: Int, natureFactor: Double) -> Int {
+        let iv = game.hasIVs ? member.ivs[i] : 31
+        let level = statLevel
+        let core = (2 * base + iv + ev / 4) * level / 100
+        if i == 0 { return base == 1 ? 1 : core + level + 10 }
+        return Int(Double(core + 5) * natureFactor)
+    }
+
+    /// Bar of the real stat: solid part = without EVs and nature, light part = what EVs and nature add,
+    /// blue part = what a lowering nature takes away. Grows live while the EV sliders move.
+    private func realStatBar(index i: Int, base: Int) -> some View {
+        let actual = member.stat(i, base: base, level: statLevel, game: game)
+        let plain = realStat(i, base: base, ev: 0, natureFactor: 1)
+        // scale: a very strong stat (base 200, full EVs, raising nature) fills the bar
+        let maxRef = Double(max(realStat(i, base: 200, ev: 252, natureFactor: i == 0 ? 1 : 1.1), 1))
+        let color = statColor(base)
+        return GeometryReader { geo in
+            let w = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color(.tertiarySystemFill))
+                if actual < plain {
+                    Capsule().fill(Color.blue.opacity(0.35)).frame(width: w * min(Double(plain) / maxRef, 1))
+                }
+                if actual > plain {
+                    Capsule().fill(color.opacity(0.45)).frame(width: w * min(Double(actual) / maxRef, 1))
+                }
+                Capsule().fill(color.gradient).frame(width: w * min(Double(min(plain, actual)) / maxRef, 1))
+            }
+            .animation(.snappy, value: actual)
+        }
+        .frame(height: 8)
     }
 
     private func statColor(_ v: Int) -> Color {
