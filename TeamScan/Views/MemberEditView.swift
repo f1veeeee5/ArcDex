@@ -81,7 +81,7 @@ struct MemberEditView: View {
                         .fill(RadialGradient(colors: member.types(in: game).map { TypeColor.color($0).opacity(0.35) } + [.clear],
                                              center: .center, startRadius: 10, endRadius: 120))
                         .frame(width: 200, height: 200)
-                    PokemonSprite(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, shiny: member.shiny)
+                    AnimatedPokemonSprite(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, shiny: member.shiny)
                         .frame(width: 170, height: 170)
                         .padding(15)
                         .id("\(member.pokemonId)-\(member.megaFormId ?? 0)-\(member.gigantamax)-\(member.shiny)")

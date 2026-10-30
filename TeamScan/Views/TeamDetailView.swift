@@ -274,7 +274,7 @@ struct MemberCard: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(LinearGradient(colors: member.types(in: game).map { TypeColor.color($0).opacity(0.28) } + [Color(.tertiarySystemFill)],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
-                PokemonSprite(pokemonId: form?.id ?? member.pokemonId, shiny: member.shiny)
+                AnimatedPokemonSprite(pokemonId: form?.id ?? member.pokemonId, shiny: member.shiny)
                     .padding(10)
                     .frame(maxWidth: .infinity)
                 HStack {
