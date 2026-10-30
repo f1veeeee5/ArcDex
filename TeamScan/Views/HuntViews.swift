@@ -64,6 +64,7 @@ struct HuntView: View {
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             liveActive = HuntActivityManager.isRunning(hunt)
+            HuntActivityManager.markUsed(hunt)
         }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .task(id: hunt.pokemonId) { await HuntActivityManager.prepareSprite(for: hunt) }
@@ -316,6 +317,15 @@ struct HuntView: View {
                                 "Shows the counter with a +\(hunt.step) button on the Lock Screen and in the Dynamic Island."))
                 .font(.footnote)
                 .foregroundStyle(liveError == nil ? Color.secondary : Color.red)
+            Divider().padding(.vertical, 2)
+            Label {
+                Text(L("Action-Button: Einstellungen → Action-Button → Kurzbefehl → ArcDex → „Shiny +1“. Gezählt wird der zuletzt geöffnete Hunt.",
+                       "Action Button: Settings → Action Button → Shortcut → ArcDex → “Shiny +1”. It counts the hunt you opened last."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: "button.vertical.left.press.fill").foregroundStyle(.secondary)
+            }
         }
         .padding(16)
         .card()
@@ -653,6 +663,7 @@ struct HuntMiniCard: View {
             Button {
                 withAnimation(.snappy) { hunt.add(hunt.step) }
                 HuntActivityManager.update(hunt)
+                HuntActivityManager.markUsed(hunt)
             } label: {
                 Image(systemName: "plus")
                     .font(.headline.weight(.bold))
@@ -702,6 +713,7 @@ struct HuntRowCard: View {
             Button {
                 withAnimation(.snappy) { hunt.add(hunt.step) }
                 HuntActivityManager.update(hunt)
+                HuntActivityManager.markUsed(hunt)
             } label: {
                 Image(systemName: "plus")
                     .font(.title3.weight(.bold))

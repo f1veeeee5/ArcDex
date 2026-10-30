@@ -109,6 +109,15 @@ struct RootView: View {
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
             }
+            .navigationDestination(for: DexAbilityRoute.self) { route in
+                AbilityDetailView(abilityId: route.id, game: route.game)
+            }
+            .navigationDestination(for: DexMoveRoute.self) { route in
+                MoveDetailView(moveId: route.id, preferredGame: route.game)
+            }
+            .navigationDestination(for: DexItemRoute.self) { route in
+                ItemDetailView(itemId: route.id, game: route.game)
+            }
             .sheet(isPresented: $showNewSave) {
                 SavegameEditSheet(save: nil, suggested: filter) { new in
                     path.append(new)

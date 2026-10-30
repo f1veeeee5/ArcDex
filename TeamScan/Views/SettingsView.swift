@@ -1,8 +1,14 @@
 import SwiftUI
+import SwiftData
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     var showsDone = true
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @State private var showBackupImport = false
+    @State private var loadedBackup: LoadedBackup?
+    @State private var backupError = false
     @AppStorage("appLanguage") private var language = AppLanguage.system.rawValue
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
@@ -76,6 +82,21 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    ShareLink(item: BackupFileShare(data: Backup.data(context: context), name: Backup.fileName),
+                              preview: SharePreview(L("ArcDex-Backup", "ArcDex backup"))) {
+                        Label(L("Backup erstellen", "Create backup"), systemImage: "externaldrive.badge.plus")
+                    }
+                    Button { showBackupImport = true } label: {
+                        Label(L("Backup laden", "Load backup"), systemImage: "externaldrive.badge.timemachine")
+                    }
+                } header: {
+                    Text(L("Daten sichern", "Backup"))
+                } footer: {
+                    Text(L("Sichert alle Spielstände, Teams, Shiny-Hunts, Nuzlocke-Runs und Favoriten in eine Datei – z. B. in „Dateien“ oder per AirDrop auf den Mac.",
+                           "Saves all save files, teams, shiny hunts, Nuzlocke runs and favorites into one file – e.g. to Files or via AirDrop to your Mac."))
+                }
+
+                Section {
                     LabeledContent(L("Daten", "Data"), value: "PokéAPI")
                     LabeledContent(L("Wettkampf-Sets", "Competitive sets"), value: "Pokémon Showdown (MIT)")
                     LabeledContent(L("Spiele", "Games"), value: "\(Game.allCases.count)")
@@ -87,6 +108,17 @@ struct SettingsView: View {
                     Text(L("Pokémon und alle zugehörigen Namen sind Marken von Nintendo, Game Freak und The Pokémon Company. Diese App ist ein inoffizielles Fan-Projekt.",
                            "Pokémon and all related names are trademarks of Nintendo, Game Freak and The Pokémon Company. This app is an unofficial fan project."))
                 }
+            }
+            .fileImporter(isPresented: $showBackupImport, allowedContentTypes: [.arcdexBackup, .json, .data]) { result in
+                if case .success(let url) = result {
+                    if let backup = Backup.read(url) { loadedBackup = LoadedBackup(backup: backup) } else { backupError = true }
+                }
+            }
+            .sheet(item: $loadedBackup) { item in
+                BackupRestoreSheet(backup: item.backup) { loadedBackup = nil }
+            }
+            .alert(L("Das ist kein ArcDex-Backup.", "This is not an ArcDex backup."), isPresented: $backupError) {
+                Button("OK", role: .cancel) {}
             }
             .navigationTitle(L("Einstellungen", "Settings"))
             .navigationBarTitleDisplayMode(showsDone ? .inline : .large)
@@ -179,4 +211,10 @@ enum Appearance: String, CaseIterable, Identifiable {
         case .dark: return .dark
         }
     }
+}
+
+
+struct LoadedBackup: Identifiable {
+    let id = UUID()
+    let backup: BackupFile
 }

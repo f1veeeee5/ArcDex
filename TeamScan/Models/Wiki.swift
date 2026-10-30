@@ -320,3 +320,14 @@ final class FavoritePokemon {
         self.shiny = shiny
     }
 }
+
+extension Wiki {
+    /// Species that evolve by using or holding this item.
+    func species(evolvingWith itemId: Int) -> [Int] {
+        data.species.compactMap { key, s -> Int? in
+            guard let evo = s.evo, evo.contains(where: { $0.it == itemId || $0.hi == itemId }) else { return nil }
+            return Int(key)
+        }
+        .sorted()
+    }
+}

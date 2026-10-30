@@ -203,6 +203,7 @@ struct PokemonDetailView: View {
                 Text(L("Keine Daten", "No data")).foregroundStyle(.secondary)
             }
             ForEach(abilities) { a in
+                NavigationLink(value: DexAbilityRoute(id: a.id, game: game)) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(a.name).font(.headline).foregroundStyle(TypeColor.color(p.t.first ?? 1))
@@ -212,14 +213,17 @@ struct PokemonDetailView: View {
                                 .background(Color(.tertiarySystemFill), in: Capsule())
                         }
                         Spacer()
+                        Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
                     }
                     if let text = wiki.abilityText(a.id) {
-                        Text(text).font(.subheadline).foregroundStyle(.secondary)
+                        Text(text).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                     }
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
         }
     }

@@ -124,9 +124,34 @@ enum HuntActivityManager {
             return
         }
         hunt.add(amount)
+        markUsed(hunt)
         try? context.save()
         let content = ActivityContent(state: state(hunt), staleDate: nil)
         for activity in list { await activity.update(content) }
+    }
+
+    private static let lastHuntKey = "lastHuntID"
+
+    /// Remembers the hunt used last – the Action Button counts this one.
+    static func markUsed(_ hunt: ShinyHunt) {
+        UserDefaults.standard.set(hunt.uuid.uuidString, forKey: lastHuntKey)
+    }
+
+    /// The hunt used last, otherwise the most recently changed active one.
+    static func currentHunt() -> ShinyHunt? {
+        let context = AppData.container.mainContext
+        let active = ((try? context.fetch(FetchDescriptor<ShinyHunt>(predicate: #Predicate { $0.foundAt == nil }))) ?? [])
+            .filter { $0.savegame != nil }
+        if let id = UserDefaults.standard.string(forKey: lastHuntKey), let hunt = active.first(where: { $0.uuid.uuidString == id }) {
+            return hunt
+        }
+        return active.max { $0.updatedAt < $1.updatedAt }
+    }
+
+    /// Updates the Live Activity and waits until it is done (for actions running in the background).
+    static func updateAndWait(_ hunt: ShinyHunt) async {
+        let content = ActivityContent(state: state(hunt), staleDate: nil)
+        for activity in activities(for: hunt) { await activity.update(content) }
     }
 
     /// Brings every running Live Activity up to date (e.g. when the app comes back to the foreground).

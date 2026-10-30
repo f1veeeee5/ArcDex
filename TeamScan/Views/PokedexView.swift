@@ -13,7 +13,11 @@ struct PokedexView: View {
     @State private var showFilterSheet = false
     @State private var showFavorites = false
     @State private var query = ""
-    @State private var path: [DexRoute] = []
+    @State private var path = NavigationPath()
+    @AppStorage("dexSection") private var sectionRaw = DexSection.pokemon.rawValue
+    @State private var moveType = 0
+    @State private var itemPocket = 0
+    private var section: DexSection { DexSection(rawValue: sectionRaw) ?? .pokemon }
     @State private var scrollPosition = ScrollPosition(edge: .top)
     @State private var titleCollapsed = false
 
@@ -54,6 +58,14 @@ struct PokedexView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(spacing: 14) {
+                    if section != .pokemon {
+                        sectionControls
+                        switch section {
+                        case .moves: MoveList(query: query, game: filter, typeFilter: $moveType)
+                        case .abilities: AbilityList(query: query, game: filter)
+                        default: ItemList(query: query, game: filter, pocket: $itemPocket)
+                        }
+                    } else {
                     controls
                     if showFavorites {
                         let favs = favoriteEntries
@@ -85,6 +97,7 @@ struct PokedexView: View {
                             ContentUnavailableView.search(text: query).padding(.top, 40)
                         }
                     }
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -104,6 +117,9 @@ struct PokedexView: View {
             .onChange(of: filterRaw) { _, _ in scrollToTop() }
             .onChange(of: showFavorites) { _, _ in scrollToTop() }
             .onChange(of: dexFilterRaw) { _, _ in scrollToTop() }
+            .onChange(of: sectionRaw) { _, _ in query = ""; scrollToTop() }
+            .onChange(of: moveType) { _, _ in scrollToTop() }
+            .onChange(of: itemPocket) { _, _ in scrollToTop() }
             .sheet(isPresented: $showFilterSheet) { DexFilterSheet(filter: dexFilterBinding) }
             .safeAreaInset(edge: .top, spacing: 0) {
                 header
@@ -130,6 +146,15 @@ struct PokedexView: View {
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
             }
+            .navigationDestination(for: DexMoveRoute.self) { route in
+                MoveDetailView(moveId: route.id, preferredGame: route.game)
+            }
+            .navigationDestination(for: DexAbilityRoute.self) { route in
+                AbilityDetailView(abilityId: route.id, game: route.game)
+            }
+            .navigationDestination(for: DexItemRoute.self) { route in
+                ItemDetailView(itemId: route.id, game: route.game)
+            }
         }
     }
 
@@ -144,9 +169,13 @@ struct PokedexView: View {
                 .font(titleCollapsed ? .headline : .largeTitle.weight(.bold))
                 .frame(maxWidth: .infinity, alignment: titleCollapsed ? .center : .leading)
                 .padding(.top, titleCollapsed ? 0 : 4)
+            Picker(L("Bereich", "Section"), selection: $sectionRaw.animation(.snappy)) {
+                ForEach(DexSection.allCases) { Text($0.title).tag($0.rawValue) }
+            }
+            .pickerStyle(.segmented)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(L("Name oder Nummer (Deutsch/Englisch)", "Name or number (German/English)"), text: $query)
+                TextField(section.searchPrompt, text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -166,6 +195,82 @@ struct PokedexView: View {
             .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08)))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Game filter (+ type / bag pocket) for moves, abilities and items.
+    private var sectionControls: some View {
+        HStack(spacing: 10) {
+            gameMenu
+            Spacer()
+            if section == .moves {
+                Menu {
+                    Picker(selection: $moveType.animation(.snappy)) {
+                        Text(L("Alle Typen", "All types")).tag(0)
+                        ForEach(Dex.shared.battleTypes) { Text($0.name).tag($0.id) }
+                    } label: { EmptyView() }
+                    .pickerStyle(.inline)
+                } label: {
+                    filterChip(moveType == 0 ? L("Alle Typen", "All types") : (Dex.shared.type(moveType)?.name ?? ""),
+                               color: moveType == 0 ? nil : TypeColor.color(moveType))
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+            } else if section == .items {
+                Menu {
+                    Picker(selection: $itemPocket.animation(.snappy)) {
+                        Text(L("Alle Taschen", "All pockets")).tag(0)
+                        ForEach(ItemPocket.allCases) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
+                    } label: { EmptyView() }
+                    .pickerStyle(.inline)
+                } label: {
+                    filterChip(ItemPocket(rawValue: itemPocket)?.title ?? L("Alle Taschen", "All pockets"),
+                               color: itemPocket == 0 ? nil : .indigo)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func filterChip(_ text: String, color: Color?) -> some View {
+        HStack(spacing: 6) {
+            Text(text).lineLimit(1)
+            Image(systemName: "chevron.down").font(.caption.weight(.bold))
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(color == nil ? Color.primary : Color.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(color.map { AnyShapeStyle($0.gradient) } ?? AnyShapeStyle(Color(.secondarySystemGroupedBackground)), in: Capsule())
+        .contentShape(Capsule())
+    }
+
+    private var gameMenu: some View {
+        Menu {
+            Picker(selection: $filterRaw.animation(.snappy)) {
+                Text(L("Alle Spiele", "All games")).tag("all")
+                GameMenuItems()
+            } label: { EmptyView() }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal.decrease").font(.subheadline.weight(.bold))
+                Text(filter?.compactTitle ?? L("Alle Spiele", "All games"))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down").font(.caption.weight(.bold))
+            }
+            .foregroundStyle(filter == nil ? Color.primary : Color.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background {
+                Capsule().fill(filter.map { AnyShapeStyle($0.gradient) } ?? AnyShapeStyle(Color(.secondarySystemGroupedBackground)))
+            }
+            .contentShape(Capsule())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .layoutPriority(1)
     }
 
     private var controls: some View {
