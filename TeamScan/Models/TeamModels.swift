@@ -8,6 +8,8 @@ final class Team {
     var gameRaw: String = Game.swsh.rawValue
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
+    /// "doubles" or "singles" – only used for Pokémon Champions teams
+    var formatRaw: String = BattleFormat.doubles.rawValue
     @Relationship(deleteRule: .cascade, inverse: \TeamMember.team)
     var members: [TeamMember] = []
 
@@ -19,6 +21,11 @@ final class Team {
     var game: Game {
         get { Game(rawValue: gameRaw) ?? .swsh }
         set { gameRaw = newValue.rawValue }
+    }
+
+    var format: BattleFormat {
+        get { BattleFormat(rawValue: formatRaw) ?? .doubles }
+        set { formatRaw = newValue.rawValue }
     }
 
     var sortedMembers: [TeamMember] {
@@ -244,5 +251,28 @@ enum ZCrystal {
                 : L("\(item.name): \(moveName) wird zur exklusiven Z-Attacke.", "\(item.name): \(moveName) becomes its exclusive Z-Move.")
         }
         return nil
+    }
+}
+
+
+enum BattleFormat: String, CaseIterable, Identifiable {
+    case singles, doubles
+    var id: String { rawValue }
+    var title: String { self == .singles ? L("Einzel", "Singles") : L("Doppel", "Doubles") }
+}
+
+extension TeamMember {
+    /// Real stat value at the given level (IV, EV and nature included).
+    func stat(_ index: Int, base: Int, level: Int, game: Game) -> Int {
+        let iv = game.hasIVs ? ivs[index] : 31
+        let ev = game.hasEVs ? evs[index] : 0
+        let core = (2 * base + iv + ev / 4) * level / 100
+        if index == 0 { return base == 1 ? 1 : core + level + 10 }   // Shedinja always has 1 HP
+        var value = Double(core + 5)
+        if let n = nature, !n.isNeutral {
+            if n.up == index + 1 { value *= 1.1 }
+            if n.down == index + 1 { value *= 0.9 }
+        }
+        return Int(value)
     }
 }

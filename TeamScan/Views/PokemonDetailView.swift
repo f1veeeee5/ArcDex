@@ -449,7 +449,7 @@ struct PokemonDetailView: View {
                 }
             }
         } else {
-            catchRateCard(p)
+            if !game.isChampions { catchRateCard(p) }
             encountersCard(p)
         }
     }
@@ -478,7 +478,12 @@ struct PokemonDetailView: View {
     private func encountersCard(_ p: DexPokemon) -> some View {
         let result = wiki.encounters(p, game: game)
         DetailCard(title: L("Fundorte in \(game.title)", "Locations in \(game.title)")) {
-            if !game.hasEncounterData {
+            if game.isChampions {
+                Label(L("In Pokémon Champions fängt man keine Pokémon. Du rekrutierst sie im Spiel oder bringst sie über Pokémon HOME mit.",
+                        "Pokémon Champions has no catching. You recruit Pokémon in the game or bring them over via Pokémon HOME."),
+                      systemImage: "info.circle")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if !game.hasEncounterData {
                 Label(L("Für \(game.title) gibt es in der Datenbank leider keine Fundort-Daten. Ich zeige hier lieber nichts, als etwas Falsches.",
                         "There is no location data for \(game.title) in the database. Rather nothing than something wrong."),
                       systemImage: "info.circle")

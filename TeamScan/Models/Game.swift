@@ -2,7 +2,7 @@ import SwiftUI
 
 /// All main series games. Raw values are stored in saved teams – never rename existing ones.
 enum Game: String, CaseIterable, Identifiable, Codable {
-    case rb, y, gs, c, rs, e, frlg, dp, pt, hgss, bw, b2w2, xy, oras, sm, lgpe, swsh, bdsp, pla, sv, za
+    case rb, y, gs, c, rs, e, frlg, dp, pt, hgss, bw, b2w2, xy, oras, sm, lgpe, swsh, bdsp, pla, sv, za, champ
 
     var id: String { rawValue }
 
@@ -29,6 +29,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .pla: return L("Legenden: Arceus", "Legends: Arceus")
         case .sv: return L("Karmesin / Purpur", "Scarlet / Violet")
         case .za: return L("Legenden: Z-A", "Legends: Z-A")
+        case .champ: return "Pokémon Champions"
         }
     }
 
@@ -45,6 +46,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .bdsp: return L("SD/LP", "BD/SP")
         case .pla: return L("Leg. Arceus", "Leg. Arceus")
         case .za: return "Leg. Z-A"
+        case .champ: return "Champions"
         case .sv: return L("Karm./Purpur", "Scarlet/Violet")
         case .swsh: return L("Schwert/Schild", "Sword/Shield")
         default: return String(t.prefix(14)) + "…"
@@ -74,6 +76,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .pla: return "PLA"
         case .sv: return L("KaPu", "SV")
         case .za: return "Z-A"
+        case .champ: return "Champions"
         }
     }
 
@@ -87,7 +90,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .xy, .oras: return 6
         case .sm, .lgpe: return 7
         case .swsh, .bdsp, .pla: return 8
-        case .sv, .za: return 9
+        case .sv, .za, .champ: return 9
         }
     }
 
@@ -115,16 +118,27 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .pla: return 24
         case .sv: return 27
         case .za: return 31
+        case .champ: return 32
         }
     }
 
-    static var generations: [(gen: Int, games: [Game])] {
-        (1...9).map { g in (g, allCases.filter { $0.gen == g }) }
+    /// Games grouped for menus: Generation 1–9, Pokémon Champions as its own group at the end.
+    static var generations: [(gen: Int, title: String, games: [Game])] {
+        var groups = (1...9).map { g in (gen: g, title: "Generation \(g)", games: allCases.filter { $0.gen == g && $0 != .champ }) }
+        groups.append((gen: 10, title: "Pokémon Champions", games: [.champ]))
+        return groups
     }
+
+    /// Battle-only game: fixed level, team format (singles/doubles), real stats shown.
+    var isChampions: Bool { self == .champ }
+    /// Level is always the same in this game.
+    var fixedLevel: Int? { self == .champ ? 50 : nil }
+    /// IVs are always maxed in Champions, so the IV editor is hidden there.
+    var hasIVs: Bool { hasEVs && self != .champ }
 
     // MARK: Mechanics
 
-    var hasMega: Bool { [.xy, .oras, .sm, .lgpe, .za].contains(self) }
+    var hasMega: Bool { [.xy, .oras, .sm, .lgpe, .za, .champ].contains(self) }
     var hasZMoves: Bool { self == .sm }
     var hasDynamax: Bool { self == .swsh }
     var hasTera: Bool { self == .sv }
@@ -138,7 +152,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
     var hasEVs: Bool { gen >= 3 && ![.lgpe, .pla, .za].contains(self) }
     var hasFairy: Bool { gen >= 6 }
 
-    var hasEncounterData: Bool { ![.bdsp, .pla, .sv, .za].contains(self) }
+    var hasEncounterData: Bool { ![.bdsp, .pla, .sv, .za, .champ].contains(self) }
     /// The database only has part of the locations for these games.
     var encounterDataPartial: Bool { self == .oras }
     /// No move lists in the database – all moves of the generation are offered.
@@ -146,7 +160,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
 
     var mechanic: String {
         switch self {
-        case .xy, .oras, .lgpe, .za: return L("Mega-Entwicklung", "Mega Evolution")
+        case .xy, .oras, .lgpe, .za, .champ: return L("Mega-Entwicklung", "Mega Evolution")
         case .sm: return L("Z-Attacken & Mega", "Z-Moves & Mega")
         case .swsh: return L("Dynamax & Gigadynamax", "Dynamax & Gigantamax")
         case .sv: return L("Terakristallisierung", "Terastallization")
@@ -157,7 +171,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
     /// Real logo of the battle mechanic (Mega, Z-Moves, Dynamax, Tera).
     var mechanicLogo: Mechanic? {
         switch self {
-        case .xy, .oras, .lgpe, .za: return .mega
+        case .xy, .oras, .lgpe, .za, .champ: return .mega
         case .sm: return .zMove
         case .swsh: return .gmax
         case .sv: return .tera
@@ -167,7 +181,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
 
     var mechanicIcon: String {
         switch self {
-        case .xy, .oras, .lgpe, .za: return "sparkles"
+        case .xy, .oras, .lgpe, .za, .champ: return "sparkles"
         case .sm: return "bolt.fill"
         case .swsh: return "arrow.up.left.and.arrow.down.right"
         case .sv: return "diamond.fill"
@@ -200,6 +214,7 @@ enum Game: String, CaseIterable, Identifiable, Codable {
         case .pla: return [Color(hex: 0x3E6E8E), Color(hex: 0xC9A66B)]
         case .sv: return [Color(hex: 0xE4362B), Color(hex: 0x8C3BCB)]
         case .za: return [Color(hex: 0x2BB673), Color(hex: 0x1C6B8A)]
+        case .champ: return [Color(hex: 0xD4A017), Color(hex: 0x1F3A93)]
         }
     }
 
@@ -219,7 +234,7 @@ struct GameMenuItems: View {
         ForEach(Game.generations, id: \.gen) { group in
             let list = group.games.filter { games.contains($0) }
             if !list.isEmpty {
-                Section("Generation \(group.gen)") {
+                Section(group.title) {
                     ForEach(list) { game in
                         let label = counts.map { game.title + "  (\($0[game] ?? 0))" } ?? game.title
                         if asGame {

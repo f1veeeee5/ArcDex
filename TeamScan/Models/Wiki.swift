@@ -287,6 +287,7 @@ extension Game {
         case .pla: return ["Legends: Arceus"]
         case .sv: return ["Scarlet", "Violet"]
         case .za: return ["Legends: Z-A"]
+        case .champ: return ["Champions"]
         }
     }
 

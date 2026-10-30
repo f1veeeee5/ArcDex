@@ -34,7 +34,7 @@ struct TeamAnalysis {
     let tips: [Tip]
     let hasMoves: Bool
 
-    init(members: [TeamMember], game: Game) {
+    init(members: [TeamMember], game: Game, format: BattleFormat? = nil) {
         let dex = Dex.shared
         let types = dex.battleTypes(gen: game.gen)
 
@@ -57,7 +57,9 @@ struct TeamAnalysis {
             return OffenseEntry(type: def, best: best, hitters: hitters)
         }
 
-        tips = TeamAnalysis.makeTips(members: members, game: game, defense: defense, offense: offense, hasMoves: hasMoves)
+        tips = (TeamAnalysis.makeTips(members: members, game: game, defense: defense, offense: offense, hasMoves: hasMoves)
+                + TeamAnalysis.formatTips(members: members, format: format))
+            .sorted { $0.level.rawValue < $1.level.rawValue }
     }
 
     // MARK: Tips
@@ -253,6 +255,59 @@ struct TeamAnalysis {
         }
 
         return tips.sorted { $0.level.rawValue < $1.level.rawValue }
+    }
+}
+
+extension TeamAnalysis {
+    /// Extra tips for Pokémon Champions depending on singles or doubles.
+    static func formatTips(members: [TeamMember], format: BattleFormat?) -> [Tip] {
+        guard let format, members.count >= 3 else { return [] }
+        let all = members.flatMap(\.moves)
+        let keys = Set(all.map(\.key))
+        func has(_ list: [String]) -> Bool { list.contains { keys.contains($0) } }
+        var tips: [Tip] = []
+        switch format {
+        case .doubles:
+            let protectKeys: Set<String> = ["protect", "detect", "spiky-shield", "kings-shield", "baneful-bunker", "silk-trap", "burning-bulwark", "obstruct", "max-guard"]
+            let protectors = members.filter { $0.moves.contains { protectKeys.contains($0.key) } }.count
+            if protectors * 2 < members.count {
+                tips.append(Tip(level: .warning, title: L("Wenig Schutzschild", "Few Protect users"),
+                                detail: L("Im Doppelkampf ist Schutzschild (oder Scanner) bei fast jedem Pokémon Standard – nur \(protectors) von \(members.count) haben es.",
+                                          "In doubles almost every Pokémon runs Protect (or Detect) – only \(protectors) of \(members.count) have it.")))
+            }
+            if !has(["fake-out"]) {
+                tips.append(Tip(level: .info, title: L("Kein Mogelhieb", "No Fake Out"),
+                                detail: L("Mogelhieb lässt einen Gegner in der ersten Runde zurückschrecken – sehr stark im Doppelkampf.",
+                                          "Fake Out makes a foe flinch on the first turn – very strong in doubles.")))
+            }
+            if !has(["tailwind", "trick-room", "icy-wind", "electroweb"]) {
+                tips.append(Tip(level: .info, title: L("Keine Speed-Kontrolle fürs Doppel", "No doubles speed control"),
+                                detail: L("Rückenwind, Bizarroraum, Eissturm oder Elektronetz entscheiden im Doppelkampf oft, wer zuerst angreift.",
+                                          "Tailwind, Trick Room, Icy Wind or Electroweb often decide who moves first in doubles.")))
+            }
+            if !has(["follow-me", "rage-powder", "ally-switch"]) {
+                tips.append(Tip(level: .info, title: L("Keine Umlenkung", "No redirection"),
+                                detail: L("Umlenk-Attacken wie Folge mir! oder Wutpulver schützen deinen Hauptangreifer.",
+                                          "Redirection like Follow Me or Rage Powder protects your main attacker.")))
+            }
+        case .singles:
+            if !has(["stealth-rock", "spikes", "toxic-spikes", "sticky-web", "stone-axe", "ceaseless-edge"]) {
+                tips.append(Tip(level: .info, title: L("Keine Fallen", "No entry hazards"),
+                                detail: L("Tarnsteine oder Stachler schwächen jeden Gegner beim Einwechseln – im Einzel sehr wertvoll.",
+                                          "Stealth Rock or Spikes damage every foe that switches in – very valuable in singles.")))
+            }
+            if !has(["u-turn", "volt-switch", "flip-turn", "parting-shot", "teleport", "chilly-reception", "shed-tail"]) {
+                tips.append(Tip(level: .info, title: L("Keine Wechsel-Attacke", "No pivot move"),
+                                detail: L("Kehrtwende oder Voltwechsel halten dich im Vorteil, wenn der Gegner wechselt.",
+                                          "U-turn or Volt Switch keep the momentum when the foe switches.")))
+            }
+            if !has(["rapid-spin", "defog", "mortal-spin", "tidy-up", "court-change"]) {
+                tips.append(Tip(level: .info, title: L("Kein Fallen-Entferner", "No hazard removal"),
+                                detail: L("Turbodreher oder Auflockern entfernen gegnerische Tarnsteine & Co.",
+                                          "Rapid Spin or Defog remove the foe's Stealth Rock and other hazards.")))
+            }
+        }
+        return tips
     }
 }
 

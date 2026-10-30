@@ -171,11 +171,20 @@ struct MemberEditView: View {
                     .multilineTextAlignment(.trailing)
                     .textInputAutocapitalization(.words)
             }
-            Stepper(value: $member.level, in: 1...100) {
+            if let fixed = game.fixedLevel {
                 HStack {
                     Text(L("Level", "Level"))
                     Spacer()
-                    Text("\(member.level)").monospacedDigit().foregroundStyle(.secondary)
+                    Text(L("\(fixed) (fest in \(game.title))", "\(fixed) (fixed in \(game.title))")).foregroundStyle(.secondary)
+                }
+                .onAppear { if member.level != fixed { member.level = fixed } }
+            } else {
+                Stepper(value: $member.level, in: 1...100) {
+                    HStack {
+                        Text(L("Level", "Level"))
+                        Spacer()
+                        Text("\(member.level)").monospacedDigit().foregroundStyle(.secondary)
+                    }
                 }
             }
             if game.hasHeldItems {
@@ -282,8 +291,11 @@ struct MemberEditView: View {
 
     // MARK: Stats
 
+    private var showsRealStats: Bool { game.hasEVs }
+    private var statLevel: Int { game.fixedLevel ?? member.level }
+
     private var statsSection: some View {
-        Section(L("Basiswerte", "Base stats")) {
+        Section {
             if let form = member.battleForm(in: game) {
                 let names = StatNames.short
                 ForEach(0..<6, id: \.self) { i in
@@ -302,13 +314,39 @@ struct MemberEditView: View {
                                 }
                         }
                         .frame(height: 8)
+                        if showsRealStats {
+                            Text("\(member.stat(i, base: value, level: statLevel, game: game))")
+                                .font(.caption.monospacedDigit().weight(.bold))
+                                .foregroundStyle(up ? .red : (down ? .blue : .primary))
+                                .frame(width: 36, alignment: .trailing)
+                        }
                     }
                 }
                 HStack {
                     Text(L("Gesamt", "Total")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Spacer()
                     Text("\(form.s.reduce(0, +))").font(.caption.weight(.bold).monospacedDigit())
+                    if showsRealStats {
+                        Text("\((0..<6).map { member.stat($0, base: form.s[$0], level: statLevel, game: game) }.reduce(0, +))")
+                            .font(.caption.weight(.bold).monospacedDigit())
+                            .frame(width: 36, alignment: .trailing)
+                    }
                 }
+            }
+        } header: {
+            HStack {
+                Text(L("Basiswerte", "Base stats"))
+                Spacer()
+                if showsRealStats {
+                    Text(L("Wert auf Lv. \(statLevel)", "Stat at Lv. \(statLevel)")).textCase(nil)
+                }
+            }
+        } footer: {
+            if showsRealStats {
+                Text(game.isChampions
+                     ? L("Rechts: echte Werte auf Level 50 mit deinen Punkten und deinem Wesen (rot = erhöht, blau = gesenkt).",
+                         "Right: real stats at level 50 with your points and nature (red = raised, blue = lowered).")
+                     : L("Rechts: echte Werte mit Level, EVs, IVs und Wesen.", "Right: real stats with level, EVs, IVs and nature."))
             }
         }
     }
@@ -345,8 +383,9 @@ struct MemberEditView: View {
                 }
                 Button(L("EVs zurücksetzen", "Reset EVs")) { member.evs = [0, 0, 0, 0, 0, 0] }
             } label: {
-                Label(L("EVs (Fleißpunkte)", "EVs"), systemImage: "chart.bar")
+                Label(game.isChampions ? L("Stat-Punkte", "Stat points") : L("EVs (Fleißpunkte)", "EVs"), systemImage: "chart.bar")
             }
+            if game.hasIVs {
             DisclosureGroup {
                 let names = StatNames.short
                 ForEach(0..<6, id: \.self) { i in
@@ -360,6 +399,12 @@ struct MemberEditView: View {
                 }
             } label: {
                 Label(L("IVs (Individualwerte)", "IVs"), systemImage: "dial.medium")
+            }
+            }
+        } footer: {
+            if game.isChampions {
+                Text(L("In Champions sind die Individualwerte immer maximal – die EV-Regler stehen für deine verteilten Punkte.",
+                       "In Champions IVs are always maxed – the EV sliders stand for your distributed points."))
             }
         }
     }

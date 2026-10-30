@@ -108,7 +108,7 @@ struct RootView: View {
                     context.insert(team)
                     for (i, s) in scanned.prefix(6).enumerated() {
                         guard let pid = s.pokemonId else { continue }
-                        let member = TeamMember(pokemonId: pid, order: i, level: s.level ?? defaultLevel)
+                        let member = TeamMember(pokemonId: pid, order: i, level: game.fixedLevel ?? s.level ?? defaultLevel)
                         context.insert(member)
                         member.team = team
                         member.apply(s, replaceSpecies: false)
@@ -153,6 +153,7 @@ struct RootView: View {
 
     private func createTeam(in game: Game) {
         let team = Team(name: nextTeamName(for: game), game: game)
+        if game.isChampions { team.format = .doubles }
         context.insert(team)
         path.append(team)
     }
@@ -246,7 +247,7 @@ struct GameChooserSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     ForEach(Game.generations, id: \.gen) { group in
-                        Text("Generation \(group.gen)")
+                        Text(group.title)
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.secondary)
                             .padding(.top, 6)

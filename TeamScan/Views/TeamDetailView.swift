@@ -25,7 +25,7 @@ struct TeamDetailView: View {
     private var game: Game { team.game }
 
     var body: some View {
-        let analysis = TeamAnalysis(members: members, game: game)
+        let analysis = TeamAnalysis(members: members, game: game, format: game.isChampions ? team.format : nil)
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 header
@@ -132,7 +132,7 @@ struct TeamDetailView: View {
                 for s in scanned {
                     guard let pid = s.pokemonId, !team.isFull else { continue }
                     let m = addMember(pokemonId: pid)
-                    m.level = s.level ?? m.level
+                    m.level = game.fixedLevel ?? s.level ?? m.level
                     m.apply(s, replaceSpecies: false)
                 }
             }
@@ -151,6 +151,18 @@ struct TeamDetailView: View {
     }
 
     private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            headerRow
+            if game.isChampions {
+                Picker(L("Format", "Format"), selection: Binding(get: { team.format }, set: { team.format = $0; team.touch() })) {
+                    ForEach(BattleFormat.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+    }
+
+    private var headerRow: some View {
         HStack(spacing: 10) {
             Text(game.title)
                 .font(.caption.weight(.bold))
@@ -171,7 +183,7 @@ struct TeamDetailView: View {
 
     @discardableResult
     private func addMember(pokemonId: Int) -> TeamMember {
-        let m = TeamMember(pokemonId: pokemonId, order: (members.map(\.order).max() ?? -1) + 1, level: defaultLevel)
+        let m = TeamMember(pokemonId: pokemonId, order: (members.map(\.order).max() ?? -1) + 1, level: game.fixedLevel ?? defaultLevel)
         context.insert(m)
         m.team = team
         team.touch()
