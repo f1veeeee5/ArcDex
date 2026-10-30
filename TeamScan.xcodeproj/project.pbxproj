@@ -453,6 +453,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_FILE = "TeamScan-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -489,6 +490,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_FILE = "TeamScan-Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

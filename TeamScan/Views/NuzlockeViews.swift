@@ -87,6 +87,8 @@ struct NuzlockeRunView: View {
                 }
 
                 rulesCard
+
+                shareCard
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 40)
@@ -101,6 +103,10 @@ struct NuzlockeRunView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    ShareLink(item: RunFile(data: RunTransfer.data(save), name: RunTransfer.fileName(save)),
+                              preview: SharePreview(save.displayName)) {
+                        Label(L("Run teilen", "Share run"), systemImage: "square.and.arrow.up")
+                    }
                     Button { showRoutes = true } label: { Label(L("Routen", "Routes"), systemImage: "map") }
                     Button { showRules = true } label: { Label(L("Regeln", "Rules"), systemImage: "list.bullet.clipboard") }
                     Button { showEdit = true } label: { Label(L("Bearbeiten", "Edit"), systemImage: "pencil") }
@@ -262,6 +268,31 @@ struct NuzlockeRunView: View {
             .card()
         }
         .buttonStyle(.plain)
+    }
+
+    private var shareCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(save.mode == .soulLink ? L("Mit Partner teilen", "Share with your partner") : L("Run teilen", "Share run"),
+                  systemImage: "square.and.arrow.up")
+                .font(.headline)
+            Text(save.mode == .soulLink
+                 ? L("Schick den aktuellen Stand als Datei (AirDrop, WhatsApp, Nachrichten). Öffnet dein Partner sie mit ArcDex, hat er denselben Run – oder sein Stand wird aktualisiert. Nach Änderungen einfach neu schicken.",
+                     "Send the current state as a file (AirDrop, WhatsApp, Messages). When your partner opens it with ArcDex, they get the same run – or their state is updated. Send it again after changes.")
+                 : L("Schick den Stand als Datei, z. B. als Backup oder an ein anderes Gerät.", "Send the state as a file, e.g. as a backup or to another device."))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            ShareLink(item: RunFile(data: RunTransfer.data(save), name: RunTransfer.fileName(save)),
+                      preview: SharePreview(save.displayName)) {
+                Label(L("Stand senden", "Send state"), systemImage: "paperplane.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
     }
 
     private func sectionTitle<A: View>(_ title: String, icon: String, count: String, @ViewBuilder accessory: () -> A) -> some View {

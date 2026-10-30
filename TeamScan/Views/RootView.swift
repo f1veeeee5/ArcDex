@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 /// Start page: all save files (each with its teams and shiny hunts).
 struct RootView: View {
@@ -14,6 +15,8 @@ struct RootView: View {
     @State private var showNewSave = false
     @State private var editingSave: Savegame?
     @State private var deletingSave: Savegame?
+    @State private var showFileImport = false
+    @State private var importedRun: ReceivedRun?
 
     private var filter: Game? { Game(rawValue: filterRaw) }
     private var saves: [Savegame] {
@@ -76,8 +79,11 @@ struct RootView: View {
             .navigationTitle(L("Spielstände", "Save Files"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewSave = true } label: { Image(systemName: "plus") }
-                        .accessibilityLabel(L("Neuer Spielstand", "New save file"))
+                    Menu {
+                        Button { showNewSave = true } label: { Label(L("Neuer Spielstand", "New save file"), systemImage: "plus") }
+                        Button { showFileImport = true } label: { Label(L("Run aus Datei laden", "Load run from file"), systemImage: "square.and.arrow.down") }
+                    } label: { Image(systemName: "plus") }
+                    .accessibilityLabel(L("Neuer Spielstand", "New save file"))
                 }
             }
             .navigationDestination(for: Savegame.self) { save in
@@ -121,6 +127,22 @@ struct RootView: View {
             } message: { save in
                 Text(L("Alle \(save.teams.count) Teams und \(save.hunts.count) Shiny-Hunts darin werden ebenfalls gelöscht.",
                        "All \(save.teams.count) teams and \(save.hunts.count) shiny hunts in it will be deleted too."))
+            }
+            .fileImporter(isPresented: $showFileImport, allowedContentTypes: [.arcdexRun, .json, .data]) { result in
+                if case .success(let url) = result, let run = RunTransfer.read(url) {
+                    importedRun = ReceivedRun(run: run)
+                }
+            }
+            .sheet(item: $importedRun) { item in
+                RunImportSheet(run: item.run) { save in
+                    importedRun = nil
+                    if let save {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            path = NavigationPath()
+                            path.append(save)
+                        }
+                    }
+                }
             }
             .task { SavegameMigration.run(context) }
             .onOpenURL { url in

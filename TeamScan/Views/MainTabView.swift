@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @AppStorage("selectedTab") private var tab = 0
     @Environment(\.scenePhase) private var scenePhase
+    @State private var receivedRun: ReceivedRun?
 
     var body: some View {
         TabView(selection: $tab) {
@@ -17,8 +18,22 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onOpenURL { url in
+            // an .arcdex file sent by the partner (AirDrop, WhatsApp, Files …)
+            guard url.isFileURL, let run = RunTransfer.read(url) else { return }
+            tab = 0
+            receivedRun = ReceivedRun(run: run)
+        }
+        .sheet(item: $receivedRun) { item in
+            RunImportSheet(run: item.run) { _ in receivedRun = nil }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { HuntActivityManager.syncAll() }
         }
     }
+}
+
+struct ReceivedRun: Identifiable {
+    let id = UUID()
+    let run: RunExport
 }
