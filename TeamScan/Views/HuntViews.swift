@@ -118,7 +118,7 @@ struct HuntView: View {
                 Circle()
                     .fill(RadialGradient(colors: [Color.yellow.opacity(hunt.isFound ? 0.45 : 0.22), .clear], center: .center, startRadius: 10, endRadius: 120))
                     .frame(width: 220, height: 220)
-                PokemonSprite(pokemonId: hunt.pokemonId, shiny: true)
+                AnimatedPokemonSprite(pokemonId: hunt.pokemonId, shiny: true)
                     .frame(width: 150, height: 150)
                     .scaleEffect(celebrate ? 1.08 : 1)
                     .animation(.spring(duration: 0.4, bounce: 0.5), value: celebrate)

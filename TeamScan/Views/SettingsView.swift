@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("appLanguage") private var language = AppLanguage.system.rawValue
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
+    @AppStorage("animatedSprites") private var animatedSprites = true
 
     var body: some View {
         NavigationStack {
@@ -21,19 +22,29 @@ struct SettingsView: View {
                            "Applies to the app and all Pokémon, move and item names. The scanner always reads German and English."))
                 }
 
-                Section(L("Sprites", "Sprites")) {
+                Section {
                     Picker(L("Stil", "Style"), selection: $styleRaw) {
                         ForEach(SpriteStyle.allCases) { Text($0.label).tag($0.rawValue) }
                     }
                     .pickerStyle(.segmented)
+                    Toggle(L("Animierte Pixel-Sprites", "Animated pixel sprites"), isOn: $animatedSprites)
+                        .disabled(styleRaw != SpriteStyle.pixel.rawValue)
                     HStack(spacing: 20) {
                         Spacer()
-                        PokemonSprite(pokemonId: 6).frame(width: 90, height: 90)
-                        PokemonSprite(pokemonId: 6, shiny: true).frame(width: 90, height: 90)
+                        AnimatedPokemonSprite(pokemonId: 6).frame(width: 90, height: 90)
+                        AnimatedPokemonSprite(pokemonId: 6, shiny: true).frame(width: 90, height: 90)
                             .overlay(alignment: .topTrailing) { ShinyBadge() }
                         Spacer()
                     }
-                    .id(styleRaw)
+                    .id("\(styleRaw)-\(animatedSprites)")
+                } header: {
+                    Text(L("Sprites", "Sprites"))
+                } footer: {
+                    Text(styleRaw == SpriteStyle.pixel.rawValue
+                         ? L("Animierte Sprites laufen in der Pokédex-Detailseite und im Shiny-Hunt in Dauerschleife. Ausschalten spart Akku und Leistung auf älteren iPhones.",
+                             "Animated sprites loop on the Pokédex detail page and in shiny hunts. Turn them off to save battery and performance on older iPhones.")
+                         : L("Animationen gibt es nur für den Pixel-Stil – für 3D-Sprites gibt es keine vollständige Quelle.",
+                             "Animations are only available for the pixel style – there is no complete source for 3D sprites."))
                 }
 
                 Section(L("Neue Pokémon", "New Pokémon")) {

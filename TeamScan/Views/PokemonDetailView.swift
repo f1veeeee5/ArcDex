@@ -65,7 +65,7 @@ struct PokemonDetailView: View {
                 Circle()
                     .fill(RadialGradient(colors: colors.map { $0.opacity(0.45) } + [.clear], center: .center, startRadius: 10, endRadius: 140))
                     .frame(width: 240, height: 240)
-                PokemonSprite(pokemonId: p.id, shiny: shiny)
+                AnimatedPokemonSprite(pokemonId: p.id, shiny: shiny)
                     .frame(width: 190, height: 190)
                     .padding(25)
                     .id("\(p.id)-\(shiny)")
