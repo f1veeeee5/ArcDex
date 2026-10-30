@@ -129,9 +129,9 @@ struct MovesetSuggestionsSection: View {
             }
             Spacer(minLength: 0)
             Button {
-                apply(entry, key: key)
+                apply(entry, pokemonId: pokemonId, key: key)
             } label: {
-                Label(applied ? L("Übernommen", "Applied") : (entry.isFullSet && hasExtras(entry) ? L("Set übernehmen", "Use set") : L("Attacken übernehmen", "Use moves")),
+                Label(applied ? L("Übernommen", "Applied") : ((entry.isStory || hasExtras(entry) || isMega) ? L("Set übernehmen", "Use set") : L("Attacken übernehmen", "Use moves")),
                       systemImage: applied ? "checkmark" : "arrow.down.doc")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
@@ -167,24 +167,45 @@ struct MovesetSuggestionsSection: View {
 
     // MARK: Apply / undo
 
-    private func apply(_ e: MovesetEntry, key: String) {
+    private func apply(_ e: MovesetEntry, pokemonId: Int, key: String) {
         undo = Snapshot(moves: member.moveIds, item: member.itemId, ability: member.abilityId, nature: member.natureId,
                         evs: member.evs, ivs: member.ivs, tera: member.teraTypeId, mega: member.megaFormId, gmax: member.gigantamax)
+        let dex = Dex.shared
+        let target = dex.pokemon(pokemonId)
         withAnimation(.snappy) {
             member.moveIds = Array(e.m.prefix(4))
-            if let i = e.i, game.hasHeldItems {
+
+            if e.isStory {
+                // playthrough: always a fitting nature and a matching item – or no item – and no Mega
+                if game.hasHeldItems { member.itemId = e.i }
+                if game.hasNatures { member.natureId = e.n }
+                member.megaFormId = nil
+                member.gigantamax = false
+            } else if game.hasMega, let target, target.kind == "mega" || target.kind == "primal", pokemonId != member.pokemonId {
+                // set for the Mega form: hold the stone and mega evolve
+                member.megaFormId = pokemonId
+                if let stone = target.stone, game.hasHeldItems { member.itemId = stone }
+                else if let i = e.i, game.hasHeldItems { member.itemId = i }
+            } else if let i = e.i, game.hasHeldItems {
                 member.itemId = i
-                if game.hasMega, let form = member.megaForm(forStone: i) { member.megaFormId = form }
+                member.megaFormId = game.hasMega ? member.megaForm(forStone: i) : nil
+            } else if let current = member.itemId, member.megaForm(forStone: current) != nil {
+                // set without item: don't keep a Mega Stone from an earlier Mega set
+                member.itemId = nil
+                member.megaFormId = nil
+            }
+
+            if !e.isStory {
+                if let n = e.n, game.hasNatures { member.natureId = n }
+                if let evs = e.e, game.hasEVs, evs.count == 6 { member.evs = evs }
+                if let ivs = e.v, game.hasIVs, ivs.count == 6 { member.ivs = ivs }
+                if let t = e.tt, game.hasTera { member.teraTypeId = t }
+                if game.hasDynamax { member.gigantamax = e.g == 1 }
             }
             if let a = e.a, game.hasAbilities, let p = member.species,
-               Dex.shared.abilities(for: p, gen: game.gen).contains(where: { $0.id == a }) {
+               dex.abilities(for: p, gen: game.gen).contains(where: { $0.id == a }) {
                 member.abilityId = a
             }
-            if let n = e.n, game.hasNatures { member.natureId = n }
-            if let evs = e.e, game.hasEVs, evs.count == 6 { member.evs = evs }
-            if let ivs = e.v, game.hasIVs, ivs.count == 6 { member.ivs = ivs }
-            if let t = e.tt, game.hasTera { member.teraTypeId = t }
-            if e.g == 1, game.hasDynamax { member.gigantamax = true }
             member.team?.touch()
             appliedKey = key
         }

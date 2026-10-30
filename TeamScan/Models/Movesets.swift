@@ -20,10 +20,12 @@ struct MovesetEntry: Codable, Hashable {
     let tt: Int?
     let g: Int?
 
-    init(s: String, m: [Int], r: String? = nil) {
-        self.s = s; self.m = m; self.r = r
-        t = nil; x = nil; i = nil; a = nil; n = nil; e = nil; v = nil; tt = nil; g = nil
+    init(s: String, m: [Int], r: String? = nil, item: Int? = nil, nature: Int? = nil) {
+        self.s = s; self.m = m; self.r = r; self.i = item; self.n = nature
+        t = nil; x = nil; a = nil; e = nil; v = nil; tt = nil; g = nil
     }
+
+    var isStory: Bool { s == "story" }
 
     /// Has more than moves (item, nature, EVs …).
     var isFullSet: Bool { i != nil || n != nil || e != nil }
@@ -181,6 +183,26 @@ final class Movesets {
         }
         for m in attacks where chosen.count < 4 && !chosen.contains(m) { chosen.append(m) }
         guard !chosen.isEmpty else { return nil }
-        return MovesetEntry(s: "story", m: chosen.prefix(4).map(\.id))
+        let moves = Array(chosen.prefix(4))
+        // nature: boosts the stronger attack stat and lowers the unused one
+        var nature: Int?
+        if game.hasNatures {
+            nature = dex.natures.first { $0.key == (physical ? "adamant" : "modest") }?.id
+        }
+        // item: the type-boosting item of the strongest own-type attack – or none
+        var item: Int?
+        if game.hasHeldItems, let main = moves.first(where: { $0.isDamaging && stab.contains($0.t) }),
+           let keys = Movesets.typeItems[main.t] {
+            let available = dex.items(for: game)
+            item = keys.lazy.compactMap { key in available.first { $0.key == key }?.id }.first
+        }
+        return MovesetEntry(s: "story", m: moves.map(\.id), item: item, nature: nature)
     }
+
+    /// Type-boosting held items (Charcoal, Mystic Water …) per type id.
+    private static let typeItems: [Int: [String]] = [
+        1: ["silk-scarf"], 2: ["black-belt"], 3: ["sharp-beak"], 4: ["poison-barb"], 5: ["soft-sand"], 6: ["hard-stone"],
+        7: ["silver-powder"], 8: ["spell-tag"], 9: ["metal-coat"], 10: ["charcoal"], 11: ["mystic-water"], 12: ["miracle-seed"],
+        13: ["magnet"], 14: ["twisted-spoon"], 15: ["never-melt-ice"], 16: ["dragon-fang"], 17: ["black-glasses"], 18: ["fairy-feather", "pixie-plate"],
+    ]
 }
