@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @AppStorage("selectedTab") private var tab = 0
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView(selection: $tab) {
@@ -16,5 +17,8 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { HuntActivityManager.syncAll() }
+        }
     }
 }

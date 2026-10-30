@@ -17,7 +17,9 @@ enum AppData {
 enum HuntActivityManager {
     static func setUp() {
         HuntIntentBridge.handler = { id, amount in
-            await MainActor.run { handleButton(huntID: id, amount: amount) }
+            // awaited completely: iOS suspends the app again right after the button action,
+            // so the Lock Screen must be updated before the action returns
+            await handleButton(huntID: id, amount: amount)
         }
     }
 
@@ -66,6 +68,16 @@ enum HuntActivityManager {
         do {
             _ = try Activity.request(attributes: attributes, content: .init(state: state(hunt), staleDate: nil))
             return nil
+        } catch where attributes.spriteData != nil {
+            // e.g. too much data – try once more without the picture
+            var plain = attributes
+            plain.spriteData = nil
+            do {
+                _ = try Activity.request(attributes: plain, content: .init(state: state(hunt), staleDate: nil))
+                return nil
+            } catch {
+                return L("Konnte nicht gestartet werden: \(error.localizedDescription)", "Could not start: \(error.localizedDescription)")
+            }
         } catch {
             return L("Konnte nicht gestartet werden: \(error.localizedDescription)", "Could not start: \(error.localizedDescription)")
         }
@@ -100,15 +112,35 @@ enum HuntActivityManager {
         for hunt in save.hunts { end(hunt: hunt) }
     }
 
-    /// Called when a button on the Live Activity is pressed.
-    private static func handleButton(huntID: String, amount: Int) {
+    /// Called when a button on the Live Activity is pressed (also on the locked Lock Screen).
+    private static func handleButton(huntID: String, amount: Int) async {
         guard let uuid = UUID(uuidString: huntID) else { return }
         let context = AppData.container.mainContext
         let descriptor = FetchDescriptor<ShinyHunt>(predicate: #Predicate { $0.uuid == uuid })
-        guard let hunt = try? context.fetch(descriptor).first else { return }
+        let list = Activity<HuntActivityAttributes>.activities.filter { $0.attributes.huntID == huntID }
+        guard let hunt = try? context.fetch(descriptor).first else {
+            // the hunt was deleted – remove its leftover Live Activity
+            for activity in list { await activity.end(nil, dismissalPolicy: .immediate) }
+            return
+        }
         hunt.add(amount)
         try? context.save()
-        update(hunt)
+        let content = ActivityContent(state: state(hunt), staleDate: nil)
+        for activity in list { await activity.update(content) }
+    }
+
+    /// Brings every running Live Activity up to date (e.g. when the app comes back to the foreground).
+    static func syncAll() {
+        let context = AppData.container.mainContext
+        let hunts = (try? context.fetch(FetchDescriptor<ShinyHunt>())) ?? []
+        for activity in Activity<HuntActivityAttributes>.activities {
+            if let hunt = hunts.first(where: { $0.uuid.uuidString == activity.attributes.huntID }), !hunt.isFound {
+                let content = ActivityContent(state: state(hunt), staleDate: nil)
+                Task { await activity.update(content) }
+            } else {
+                Task { await activity.end(nil, dismissalPolicy: .immediate) }
+            }
+        }
     }
 
     private static func pixelURL(for hunt: ShinyHunt) -> URL? {
@@ -126,18 +158,21 @@ enum HuntActivityManager {
         guard let url = pixelURL(for: hunt), let image = ImageCache.shared.cached(url),
               let cg = image.cgImage else { return nil }
         let cropped = cg.croppedToContent() ?? cg
-        let side = 48
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
-        let data = renderer.pngData { ctx in
-            ctx.cgContext.interpolationQuality = .none
-            let w = CGFloat(cropped.width), h = CGFloat(cropped.height)
-            let scale = CGFloat(side) / max(w, h)
-            let rect = CGRect(x: (CGFloat(side) - w * scale) / 2, y: (CGFloat(side) - h * scale) / 2, width: w * scale, height: h * scale)
-            UIImage(cgImage: cropped).draw(in: rect)
+        // Live Activities may only carry about 4 KB in total – keep the picture small
+        for side in [44, 36, 28] {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
+            let data = renderer.pngData { ctx in
+                ctx.cgContext.interpolationQuality = .none
+                let w = CGFloat(cropped.width), h = CGFloat(cropped.height)
+                let scale = CGFloat(side) / max(w, h)
+                let rect = CGRect(x: (CGFloat(side) - w * scale) / 2, y: (CGFloat(side) - h * scale) / 2, width: w * scale, height: h * scale)
+                UIImage(cgImage: cropped).draw(in: rect)
+            }
+            if data.count <= 2000 { return data }
         }
-        return data.count <= 2800 ? data : nil
+        return nil
     }
 }
 
