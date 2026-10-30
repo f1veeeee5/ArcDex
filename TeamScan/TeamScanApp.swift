@@ -7,6 +7,7 @@ struct TeamScanApp: App {
 
     init() {
         _ = Dex.shared
+        HuntActivityManager.setUp()
     }
 
     var body: some Scene {
@@ -15,6 +16,6 @@ struct TeamScanApp: App {
                 .id(language)
                 .environment(\.locale, Lang.current.locale)
         }
-        .modelContainer(for: [Team.self, TeamMember.self, FavoritePokemon.self])
+        .modelContainer(AppData.container)
     }
 }

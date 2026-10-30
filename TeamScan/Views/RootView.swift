@@ -1,55 +1,69 @@
 import SwiftUI
 import SwiftData
 
+/// Start page: all save files (each with its teams and shiny hunts).
 struct RootView: View {
     @Environment(\.modelContext) private var context
-    @Query(sort: \Team.updatedAt, order: .reverse) private var allTeams: [Team]
+    @Query(sort: \Savegame.updatedAt, order: .reverse) private var allSaves: [Savegame]
+    @Query(filter: #Predicate<ShinyHunt> { $0.foundAt == nil }, sort: \ShinyHunt.updatedAt, order: .reverse)
+    private var activeHunts: [ShinyHunt]
     /// "all" or a Game raw value
     @AppStorage("gameFilter") private var filterRaw = "all"
-    @AppStorage("defaultLevel") private var defaultLevel = 50
-
-    private enum AddAction: String, Identifiable {
-        case create, scan, importShowdown
-        var id: String { rawValue }
-    }
 
     @State private var path = NavigationPath()
-    @State private var askGame: AddAction?
-    @State private var pendingAction: AddAction?
-    @State private var pendingGame: Game?
-    @State private var importGame: Game?
-    @State private var scanGame: Game?
-    @State private var renaming: Team?
-    @State private var renameText = ""
+    @State private var showNewSave = false
+    @State private var editingSave: Savegame?
+    @State private var deletingSave: Savegame?
 
     private var filter: Game? { Game(rawValue: filterRaw) }
-    private var teams: [Team] {
-        guard let filter else { return allTeams }
-        return allTeams.filter { $0.gameRaw == filter.rawValue }
+    private var saves: [Savegame] {
+        guard let filter else { return allSaves }
+        return allSaves.filter { $0.gameRaw == filter.rawValue }
+    }
+    private var hunts: [ShinyHunt] {
+        activeHunts.filter { h in h.savegame != nil && (filter == nil || h.savegame?.gameRaw == filter?.rawValue) }
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    GameFilterBar(filterRaw: $filterRaw, counts: countsPerGame, total: allTeams.count)
+                    GameFilterBar(filterRaw: $filterRaw, counts: countsPerGame, total: allSaves.count,
+                                  countLabel: { n in L("\(n) \(n == 1 ? "Spielstand" : "Spielstände")", "\(n) \(n == 1 ? "save" : "saves")") })
 
-                    if teams.isEmpty {
-                        EmptyTeamsView(game: filter,
-                                       onCreate: { askGame = .create },
-                                       onScan: { askGame = .scan },
-                                       onImport: { askGame = .importShowdown })
+                    if !hunts.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(L("Aktive Shiny-Hunts", "Active shiny hunts"), systemImage: "sparkles")
+                                .font(.headline)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(hunts) { hunt in
+                                        HuntMiniCard(hunt: hunt) { path.append(hunt) }
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                            .scrollClipDisabled()
+                        }
+                    }
+
+                    if saves.isEmpty {
+                        EmptySavesView(game: filter) { showNewSave = true }
                     } else {
+                        if !hunts.isEmpty {
+                            Label(L("Spielstände", "Save files"), systemImage: "square.grid.2x2.fill")
+                                .font(.headline)
+                                .padding(.top, 4)
+                        }
                         LazyVStack(spacing: 14) {
-                            ForEach(teams) { team in
-                                NavigationLink(value: team) {
-                                    TeamCard(team: team)
+                            ForEach(saves) { save in
+                                NavigationLink(value: save) {
+                                    SavegameCard(save: save)
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
-                                    Button { renameText = team.name; renaming = team } label: { Label(L("Umbenennen", "Rename"), systemImage: "pencil") }
-                                    Button { duplicate(team) } label: { Label(L("Duplizieren", "Duplicate"), systemImage: "plus.square.on.square") }
-                                    Button(role: .destructive) { context.delete(team) } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
+                                    Button { editingSave = save } label: { Label(L("Bearbeiten", "Edit"), systemImage: "pencil") }
+                                    Button(role: .destructive) { deletingSave = save } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
                                 }
                             }
                         }
@@ -59,17 +73,15 @@ struct RootView: View {
                 .padding(.bottom, 32)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(L("Meine Teams", "My Teams"))
+            .navigationTitle(L("Spielstände", "Save Files"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button { askGame = .create } label: { Label(L("Neues Team", "New team"), systemImage: "plus") }
-                        Button { askGame = .scan } label: { Label(L("Team scannen", "Scan team"), systemImage: "camera.viewfinder") }
-                        Button { askGame = .importShowdown } label: { Label(L("Aus Showdown importieren", "Import from Showdown"), systemImage: "square.and.arrow.down") }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+                    Button { showNewSave = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel(L("Neuer Spielstand", "New save file"))
                 }
+            }
+            .navigationDestination(for: Savegame.self) { save in
+                SavegameDetailView(save: save, path: $path)
             }
             .navigationDestination(for: Team.self) { team in
                 TeamDetailView(team: team, path: $path)
@@ -81,95 +93,156 @@ struct RootView: View {
                     MemberEditView(member: member, game: .swsh)
                 }
             }
+            .navigationDestination(for: ShinyHunt.self) { hunt in
+                HuntView(hunt: hunt, path: $path)
+            }
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
             }
-            .sheet(item: $askGame, onDismiss: runPendingAction) { action in
-                GameChooserSheet(suggested: filter, title: title(for: action)) { game in
-                    pendingGame = game
-                    pendingAction = action
+            .sheet(isPresented: $showNewSave) {
+                SavegameEditSheet(save: nil, suggested: filter) { new in
+                    path.append(new)
                 }
             }
-            .sheet(item: $importGame) { game in
-                ShowdownImportView(game: game) { imported in
-                    let team = Team(name: imported.name ?? L("Importiertes Team", "Imported team"), game: game)
-                    context.insert(team)
-                    for (i, m) in imported.members.prefix(6).enumerated() {
-                        let member = Showdown.makeMember(m, order: i)
-                        context.insert(member)
-                        member.team = team
-                    }
-                    path.append(team)
+            .sheet(item: $editingSave) { save in
+                SavegameEditSheet(save: save, suggested: nil) { _ in }
+            }
+            .confirmationDialog(L("Spielstand löschen?", "Delete save file?"),
+                                isPresented: Binding(get: { deletingSave != nil }, set: { if !$0 { deletingSave = nil } }),
+                                titleVisibility: .visible, presenting: deletingSave) { save in
+                Button(L("Löschen", "Delete"), role: .destructive) {
+                    HuntActivityManager.end(huntsOf: save)
+                    context.delete(save)
                 }
+            } message: { save in
+                Text(L("Alle \(save.teams.count) Teams und \(save.hunts.count) Shiny-Hunts darin werden ebenfalls gelöscht.",
+                       "All \(save.teams.count) teams and \(save.hunts.count) shiny hunts in it will be deleted too."))
             }
-            .sheet(item: $scanGame) { game in
-                MemberScanSheet(game: game, mode: .team) { scanned in
-                    let team = Team(name: nextTeamName(for: game), game: game)
-                    context.insert(team)
-                    for (i, s) in scanned.prefix(6).enumerated() {
-                        guard let pid = s.pokemonId else { continue }
-                        let member = TeamMember(pokemonId: pid, order: i, level: game.fixedLevel ?? s.level ?? defaultLevel)
-                        context.insert(member)
-                        member.team = team
-                        member.apply(s, replaceSpecies: false)
-                    }
-                    path.append(team)
-                }
+            .task { SavegameMigration.run(context) }
+            .onOpenURL { url in
+                // arcdex://hunt/<uuid> – tapping the Live Activity opens the hunt
+                guard url.host() == "hunt", let id = UUID(uuidString: url.lastPathComponent),
+                      let hunt = activeHunts.first(where: { $0.uuid == id }) else { return }
+                path = NavigationPath()
+                if let save = hunt.savegame { path.append(save) }
+                path.append(hunt)
             }
-            .alert(L("Team umbenennen", "Rename team"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-                TextField(L("Name", "Name"), text: $renameText)
-                Button(L("Sichern", "Save")) { renaming?.name = renameText; renaming = nil }
-                Button(L("Abbrechen", "Cancel"), role: .cancel) { renaming = nil }
-            }
-        }
-    }
-
-    private func title(for action: AddAction) -> String {
-        switch action {
-        case .create: return L("Neues Team", "New team")
-        case .scan: return L("Team scannen", "Scan team")
-        case .importShowdown: return L("Showdown-Import", "Showdown import")
-        }
-    }
-
-    private func runPendingAction() {
-        guard let game = pendingGame, let action = pendingAction else { return }
-        pendingGame = nil
-        pendingAction = nil
-        switch action {
-        case .create: createTeam(in: game)
-        case .scan: scanGame = game
-        case .importShowdown: importGame = game
         }
     }
 
     private var countsPerGame: [Game: Int] {
-        Dictionary(grouping: allTeams, by: \.game).mapValues(\.count)
+        Dictionary(grouping: allSaves, by: \.game).mapValues(\.count)
     }
+}
 
-    private func nextTeamName(for game: Game) -> String {
-        "Team \(allTeams.filter { $0.game == game }.count + 1)"
-    }
+// MARK: - Save file card
 
-    private func createTeam(in game: Game) {
-        let team = Team(name: nextTeamName(for: game), game: game)
-        if game.isChampions { team.format = .doubles }
-        context.insert(team)
-        path.append(team)
-    }
+struct SavegameCard: View {
+    let save: Savegame
 
-    private func duplicate(_ team: Team) {
-        let copy = Team(name: team.name + L(" (Kopie)", " (Copy)"), game: team.game)
-        context.insert(copy)
-        for m in team.sortedMembers {
-            let n = TeamMember(pokemonId: m.pokemonId, order: m.order, level: m.level)
-            context.insert(n)
-            n.nickname = m.nickname; n.shiny = m.shiny; n.gender = m.gender
-            n.itemId = m.itemId; n.abilityId = m.abilityId; n.natureId = m.natureId
-            n.teraTypeId = m.teraTypeId; n.megaFormId = m.megaFormId; n.gigantamax = m.gigantamax
-            n.moveIds = m.moveIds; n.evs = m.evs; n.ivs = m.ivs
-            n.team = copy
+    var body: some View {
+        let game = save.game
+        let hunts = save.activeHunts
+        let found = save.foundHunts.count
+        let latestTeam = save.sortedTeams.first
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(save.displayName)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        if !save.name.isEmpty {
+                            Text(game.compactTitle)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(game.gradient, in: Capsule())
+                        }
+                        Label(save.platform.shortTitle, systemImage: save.platform.icon)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                GameMechanicIcon(game: game, size: 18)
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(game.gradient, in: Circle())
+            }
+
+            if let team = latestTeam, !team.members.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(team.sortedMembers) { m in
+                        PokemonSprite(pokemonId: m.battleForm(in: game)?.id ?? m.pokemonId, shiny: m.shiny)
+                            .frame(width: 40, height: 40)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+
+            HStack(spacing: 8) {
+                StatPill(icon: "square.grid.2x2.fill", text: "\(save.teams.count) \(save.teams.count == 1 ? "Team" : "Teams")")
+                if game.hasShinyHunting {
+                    StatPill(icon: "scope", text: "\(hunts.count) \(hunts.count == 1 ? "Hunt" : "Hunts")", highlight: !hunts.isEmpty)
+                    if found > 0 {
+                        StatPill(icon: "sparkles", text: "\(found) Shiny\(found == 1 ? "" : "s")", highlight: true)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+            }
         }
+        .padding(16)
+        .card()
+        .overlay(alignment: .leading) {
+            Capsule().fill(game.gradient).frame(width: 4).padding(.vertical, 18)
+        }
+    }
+}
+
+struct StatPill: View {
+    let icon: String
+    let text: String
+    var highlight = false
+
+    var body: some View {
+        Label(text, systemImage: icon)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(highlight ? Color.orange : Color.secondary)
+            .padding(.horizontal, 9).padding(.vertical, 5)
+            .background((highlight ? Color.orange : Color.secondary).opacity(0.12), in: Capsule())
+    }
+}
+
+struct EmptySavesView: View {
+    let game: Game?
+    var onCreate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle().fill(game?.gradient ?? LinearGradient(colors: [Color(hex: 0x7300D6), Color(hex: 0xE5007E)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 84, height: 84)
+                Image(systemName: "gamecontroller.fill").font(.system(size: 34, weight: .semibold)).foregroundStyle(.white)
+            }
+            .padding(.top, 30)
+            Text(game.map { L("Noch kein Spielstand für \($0.title)", "No save file for \($0.title) yet") } ?? L("Noch keine Spielstände", "No save files yet"))
+                .font(.title3.weight(.bold)).multilineTextAlignment(.center)
+            Text(L("Lege einen Spielstand an – darin sammelst du deine Teams und Shiny-Hunts.",
+                   "Create a save file – it holds your teams and shiny hunts."))
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Button(action: onCreate) {
+                Label(L("Spielstand anlegen", "Create save file"), systemImage: "plus").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.top, 6)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .card()
     }
 }
 
@@ -179,6 +252,7 @@ struct GameFilterBar: View {
     @Binding var filterRaw: String
     var counts: [Game: Int]
     var total: Int
+    var countLabel: (Int) -> String = { n in L("\(n) \(n == 1 ? "Team" : "Teams")", "\(n) \(n == 1 ? "team" : "teams")") }
 
     private var selected: Game? { Game(rawValue: filterRaw) }
 
@@ -226,74 +300,10 @@ struct GameFilterBar: View {
             }
             Spacer()
             let count = selected.map { counts[$0] ?? 0 } ?? total
-            Text(L("\(count) \(count == 1 ? "Team" : "Teams")", "\(count) \(count == 1 ? "team" : "teams")"))
+            Text(countLabel(count))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
-    }
-}
-
-struct GameChooserSheet: View {
-    var suggested: Game?
-    var title: String
-    var onPick: (Game) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(L("Aus welchem Spiel ist das Team?", "Which game is this team from?"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    ForEach(Game.generations, id: \.gen) { group in
-                        Text(group.title)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 6)
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                            ForEach(group.games) { game in
-                                Button {
-                                    onPick(game)
-                                    dismiss()
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        HStack {
-                                            GameMechanicIcon(game: game, size: 18)
-                                            Spacer()
-                                            Text(game.shortTitle).font(.caption.weight(.heavy))
-                                                .padding(.horizontal, 7).padding(.vertical, 3)
-                                                .background(.white.opacity(0.22), in: Capsule())
-                                        }
-                                        Spacer(minLength: 0)
-                                        Text(game.title).font(.headline).multilineTextAlignment(.leading)
-                                            .lineLimit(2).minimumScaleFactor(0.8)
-                                    }
-                                    .foregroundStyle(.white)
-                                    .padding(12)
-                                    .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-                                    .background(game.gradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                    .overlay {
-                                        if game == suggested {
-                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                .strokeBorder(.white.opacity(0.9), lineWidth: 3)
-                                        }
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                }
-                .padding(16)
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(L("Abbrechen", "Cancel")) { dismiss() } }
-            }
-        }
-        .presentationDetents([.large])
     }
 }
 

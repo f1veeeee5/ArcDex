@@ -12,6 +12,8 @@ final class Team {
     var formatRaw: String = BattleFormat.doubles.rawValue
     @Relationship(deleteRule: .cascade, inverse: \TeamMember.team)
     var members: [TeamMember] = []
+    /// The save file this team belongs to (teams of older app versions are assigned on first launch).
+    var savegame: Savegame?
 
     init(name: String, game: Game) {
         self.name = name

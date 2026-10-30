@@ -191,32 +191,35 @@ enum Game: String, CaseIterable, Identifiable, Codable {
 
     var showdownFormat: String { self == .lgpe ? "gen7letsgo" : (self == .bdsp ? "gen8bdsp" : "gen\(gen)") }
 
-    var colors: [Color] {
+    /// Raw colour values (also used by the Live Activity, which has no access to SwiftUI colours of the app).
+    var colorHexes: [UInt32] {
         switch self {
-        case .rb: return [Color(hex: 0xE3350D), Color(hex: 0x3B6BD6)]
-        case .y: return [Color(hex: 0xF7C600), Color(hex: 0xE89A00)]
-        case .gs: return [Color(hex: 0xC9A227), Color(hex: 0x9AA4B5)]
-        case .c: return [Color(hex: 0x4FC3D9), Color(hex: 0x6E7CCC)]
-        case .rs: return [Color(hex: 0xD62C3A), Color(hex: 0x2F5FCF)]
-        case .e: return [Color(hex: 0x1FAE6B), Color(hex: 0x0E7A55)]
-        case .frlg: return [Color(hex: 0xF0642D), Color(hex: 0x4CAF50)]
-        case .dp: return [Color(hex: 0x5E9BE8), Color(hex: 0xE58BB8)]
-        case .pt: return [Color(hex: 0x8C8F99), Color(hex: 0x4A4E5A)]
-        case .hgss: return [Color(hex: 0xE2A72E), Color(hex: 0xA8B4C8)]
-        case .bw: return [Color(hex: 0x3A3A3A), Color(hex: 0x9A9A9A)]
-        case .b2w2: return [Color(hex: 0x2B4A73), Color(hex: 0xC94A4A)]
-        case .xy: return [Color(hex: 0x2F6BFF), Color(hex: 0xE8384F)]
-        case .oras: return [Color(hex: 0xC8102E), Color(hex: 0x1D4ED8)]
-        case .sm: return [Color(hex: 0xF7A81B), Color(hex: 0x7B4AE2)]
-        case .lgpe: return [Color(hex: 0xF5C400), Color(hex: 0xB0703A)]
-        case .swsh: return [Color(hex: 0x00A7E1), Color(hex: 0xE5007E)]
-        case .bdsp: return [Color(hex: 0x3D8BFF), Color(hex: 0xF27EB0)]
-        case .pla: return [Color(hex: 0x3E6E8E), Color(hex: 0xC9A66B)]
-        case .sv: return [Color(hex: 0xE4362B), Color(hex: 0x8C3BCB)]
-        case .za: return [Color(hex: 0x2BB673), Color(hex: 0x1C6B8A)]
-        case .champ: return [Color(hex: 0xD4A017), Color(hex: 0x1F3A93)]
+        case .rb: return [0xE3350D, 0x3B6BD6]
+        case .y: return [0xF7C600, 0xE89A00]
+        case .gs: return [0xC9A227, 0x9AA4B5]
+        case .c: return [0x4FC3D9, 0x6E7CCC]
+        case .rs: return [0xD62C3A, 0x2F5FCF]
+        case .e: return [0x1FAE6B, 0x0E7A55]
+        case .frlg: return [0xF0642D, 0x4CAF50]
+        case .dp: return [0x5E9BE8, 0xE58BB8]
+        case .pt: return [0x8C8F99, 0x4A4E5A]
+        case .hgss: return [0xE2A72E, 0xA8B4C8]
+        case .bw: return [0x3A3A3A, 0x9A9A9A]
+        case .b2w2: return [0x2B4A73, 0xC94A4A]
+        case .xy: return [0x2F6BFF, 0xE8384F]
+        case .oras: return [0xC8102E, 0x1D4ED8]
+        case .sm: return [0xF7A81B, 0x7B4AE2]
+        case .lgpe: return [0xF5C400, 0xB0703A]
+        case .swsh: return [0x00A7E1, 0xE5007E]
+        case .bdsp: return [0x3D8BFF, 0xF27EB0]
+        case .pla: return [0x3E6E8E, 0xC9A66B]
+        case .sv: return [0xE4362B, 0x8C3BCB]
+        case .za: return [0x2BB673, 0x1C6B8A]
+        case .champ: return [0xD4A017, 0x1F3A93]
         }
     }
+
+    var colors: [Color] { colorHexes.map { Color(hex: $0) } }
 
     var gradient: LinearGradient {
         LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)

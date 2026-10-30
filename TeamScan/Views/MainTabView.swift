@@ -5,7 +5,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            Tab(L("Meine Teams", "My Teams"), systemImage: "square.grid.2x2.fill", value: 0) {
+            Tab(L("Spielstände", "Saves"), systemImage: "square.grid.2x2.fill", value: 0) {
                 RootView()
             }
             Tab("Pokédex", systemImage: "book.closed.fill", value: 1) {

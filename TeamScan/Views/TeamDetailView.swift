@@ -8,6 +8,7 @@ struct TeamDetailView: View {
     @Binding var path: NavigationPath
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Savegame.updatedAt, order: .reverse) private var saves: [Savegame]
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
 
@@ -100,9 +101,22 @@ struct TeamDetailView: View {
                     Picker(selection: $styleRaw) {
                         ForEach(SpriteStyle.allCases) { Text($0.label).tag($0.rawValue) }
                     } label: { Label(L("Sprites", "Sprites"), systemImage: "photo") }
-                    Picker(selection: Binding(get: { team.game }, set: { team.game = $0 })) {
-                        GameMenuItems(asGame: true)
-                    } label: { Label(L("Spiel", "Game"), systemImage: "gamecontroller") }
+                    Menu {
+                        ForEach(saves) { save in
+                            Button {
+                                team.savegame = save
+                                team.game = save.game
+                                team.touch()
+                                save.touch()
+                            } label: {
+                                if save === team.savegame {
+                                    Label(save.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(save.name.isEmpty ? save.displayName : "\(save.displayName) · \(save.game.compactTitle)")
+                                }
+                            }
+                        }
+                    } label: { Label(L("In Spielstand verschieben", "Move to save file"), systemImage: "folder") }
                     Divider()
                     Button { renameText = team.name; showRename = true } label: { Label(L("Umbenennen", "Rename"), systemImage: "pencil") }
                     Button(role: .destructive) { confirmDelete = true } label: { Label(L("Team löschen", "Delete team"), systemImage: "trash") }
