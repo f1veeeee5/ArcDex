@@ -307,6 +307,20 @@ final class Dex {
     }
 
     private var dexSets: [Game: Set<Int>] = [:]
+    /// game -> move id -> Pokémon that learn it (built once per game, used by the move pages)
+    private var moveLearners: [Game: [Int: [Int]]] = [:]
+
+    /// Ids of Pokémon with their own learnset in this game that can learn the move.
+    func learnerIDs(of moveId: Int, game: Game) -> [Int] {
+        if moveLearners[game] == nil {
+            var index: [Int: [Int]] = [:]
+            for (pokemonId, moves) in learnsets[game] ?? [:] {
+                for m in moves { index[m, default: []].append(pokemonId) }
+            }
+            moveLearners[game] = index
+        }
+        return moveLearners[game]?[moveId] ?? []
+    }
 
     /// Whether a Pokémon (incl. battle forms) appears in a game.
     func appears(_ pokemonId: Int, in game: Game) -> Bool {

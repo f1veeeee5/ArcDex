@@ -96,10 +96,11 @@ final class DexExtra {
 extension Dex {
     /// Pokémon that can learn a move in a game (base forms + regional forms, no Megas).
     func learners(of moveId: Int, game: Game) -> [DexPokemon] {
-        // only Pokémon with their own learnset – otherwise the "all moves" fallback would list everyone
-        available(in: game).filter { p in
-            isAvailable(p.id, in: game) && learnset(for: p.id, game: game).contains { $0.id == moveId }
-        }
+        let shown = Set(available(in: game).map(\.id))
+        return learnerIDs(of: moveId, game: game)
+            .filter { shown.contains($0) }
+            .compactMap { pokemon($0) }
+            .sorted { ($0.sp, $0.id) < ($1.sp, $1.id) }
     }
 
     private func available(in game: Game) -> [DexPokemon] {
@@ -123,7 +124,7 @@ extension Dex {
     func newestGame(withMove moveId: Int) -> Game? {
         for game in [Game.sv, .swsh, .sm, .oras, .xy, .b2w2, .bw, .hgss, .pt, .dp, .e, .frlg, .rs, .c, .gs, .y, .rb]
         where game.hasLearnsets {
-            if !learners(of: moveId, game: game).isEmpty { return game }
+            if !learnerIDs(of: moveId, game: game).isEmpty { return game }
         }
         return nil
     }

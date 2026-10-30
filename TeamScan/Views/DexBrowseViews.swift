@@ -326,6 +326,8 @@ struct MoveDetailView: View {
     let moveId: Int
     let preferredGame: Game?
     @State private var game: Game?
+    /// nil while loading
+    @State private var learnerList: [DexPokemon]?
 
     var body: some View {
         let dex = Dex.shared
@@ -364,15 +366,29 @@ struct MoveDetailView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle(move.name)
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                if game == nil { game = preferredGame.flatMap { $0.hasLearnsets ? $0 : nil } ?? dex.newestGame(withMove: move.id) }
+            .task(id: game) {
+                if game == nil {
+                    await Task.yield()
+                    game = preferredGame.flatMap { $0.hasLearnsets ? $0 : nil } ?? dex.newestGame(withMove: move.id)
+                }
+                guard let game else { learnerList = []; return }
+                learnerList = nil
+                await Task.yield()   // show the spinner first
+                learnerList = dex.learners(of: move.id, game: game)
             }
         }
     }
 
     @ViewBuilder private func learners(_ move: DexMove) -> some View {
-        if let game {
-            let list = Dex.shared.learners(of: move.id, game: game)
+        if learnerList == nil {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text(L("Pokémon werden gesucht …", "Looking up Pokémon …")).font(.subheadline).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+        }
+        if let game, let list = learnerList {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text(L("Wer lernt es?", "Who learns it?")).font(.title3.weight(.bold))
