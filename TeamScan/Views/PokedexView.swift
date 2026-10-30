@@ -168,10 +168,19 @@ struct PokedexView: View {
     /// Title and search field – they stay at the top while the list scrolls underneath.
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Pokédex")
-                .font(titleCollapsed ? .headline : .largeTitle.weight(.bold))
-                .frame(maxWidth: .infinity, alignment: titleCollapsed ? .center : .leading)
-                .padding(.top, titleCollapsed ? 0 : 4)
+            // Same height in both states – otherwise the list would jump when the title shrinks.
+            ZStack {
+                Text("Pokédex")
+                    .font(.largeTitle.weight(.bold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .scaleEffect(titleCollapsed ? 0.85 : 1, anchor: .leading)
+                    .opacity(titleCollapsed ? 0 : 1)
+                Text("Pokédex")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .opacity(titleCollapsed ? 1 : 0)
+            }
+            .frame(height: 44)
             Picker(L("Bereich", "Section"), selection: $sectionRaw.animation(.snappy)) {
                 ForEach(DexSection.allCases) { Text($0.title).tag($0.rawValue) }
             }
