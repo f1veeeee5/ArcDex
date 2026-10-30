@@ -23,7 +23,8 @@ struct MovesetSuggestionsSection: View {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: 12) {
+                        // a plain HStack (not lazy) so every card can grow to the height of the tallest one
+                        HStack(alignment: .top, spacing: 12) {
                             if let story {
                                 card(story, pokemonId: member.pokemonId, key: "story")
                             }
@@ -31,10 +32,12 @@ struct MovesetSuggestionsSection: View {
                                 card(item.set, pokemonId: item.pokemonId, key: "c\(i)")
                             }
                         }
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
                     }
                     .scrollClipDisabled()
+                    .mask(edgeFade)
                     .blocksPagerSwipe(swipeLock)
 
                     if undo != nil {
@@ -60,6 +63,15 @@ struct MovesetSuggestionsSection: View {
                        "Playthrough: calculated from level-up moves up to Lv. \(member.level). Competitive sets: Pokémon Showdown (Battle Factory, Battle Stadium, Random Battles). Hide them in Settings."))
             }
             .sensoryFeedback(.success, trigger: applyCount)
+        }
+    }
+
+    /// Soft fade at the left and right edge, so the cards don't end with a hard cut.
+    private var edgeFade: some View {
+        HStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing).frame(width: 14)
+            Rectangle().fill(.black)
+            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 14)
         }
     }
 
@@ -129,7 +141,7 @@ struct MovesetSuggestionsSection: View {
         }
         .padding(14)
         .frame(width: 250, alignment: .topLeading)
-        .frame(minHeight: 250, alignment: .top)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
