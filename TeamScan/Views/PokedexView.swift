@@ -142,6 +142,9 @@ struct PokedexView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Pokédex")
+            // the bar is hidden – "inline" keeps it from collapsing a large title while scrolling,
+            // which would change the top inset and make the list jump (after coming back from a Pokémon)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: DexRoute.self) { route in
                 PokemonDetailView(pokemonId: route.pokemonId, preferredGame: route.game)
