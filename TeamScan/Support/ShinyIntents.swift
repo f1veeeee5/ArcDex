@@ -9,15 +9,15 @@ struct ShinyCountUpIntent: AppIntent {
     /// works with a locked iPhone, too
     static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
+    /// No dialog: a dialog would have to be closed with "Done" before the next press.
+    /// The Lock Screen counter (Live Activity) shows the new number instead.
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let hunt = HuntActivityManager.currentHunt() else {
-            return .result(dialog: IntentDialog(stringLiteral: L("Kein aktiver Shiny-Hunt", "No active shiny hunt")))
-        }
+    func perform() async throws -> some IntentResult {
+        guard let hunt = HuntActivityManager.currentHunt() else { return .result() }
         hunt.add(hunt.step)
         try? AppData.container.mainContext.save()
         await HuntActivityManager.updateAndWait(hunt)
-        return .result(dialog: IntentDialog(stringLiteral: "\(hunt.name): \(hunt.count)"))
+        return .result()
     }
 }
 

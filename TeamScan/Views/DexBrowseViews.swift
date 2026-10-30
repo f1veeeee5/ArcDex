@@ -29,6 +29,55 @@ enum DexSection: String, CaseIterable, Identifiable {
 struct DexMoveRoute: Hashable { let id: Int; let game: Game? }
 struct DexAbilityRoute: Hashable { let id: Int; let game: Game? }
 struct DexItemRoute: Hashable { let id: Int; let game: Game? }
+struct DexItemGroupRoute: Hashable { let key: String; let game: Game? }
+
+/// Many near-identical items (300 Dynamax Crystals, 80 Candies …) are shown as one group.
+struct ItemGroup: Identifiable {
+    let key: String
+    let items: [ExtraItem]
+    var id: String { key }
+
+    var title: String {
+        guard let first = items.first else { return "" }
+        switch first.cat {
+        case 49: return L("Dynamax-Kristalle", "Dynamax Crystals")
+        case 47: return L("Pokémon-Bonbons", "Species Candies")
+        case 32: return L("Mulch", "Mulch")
+        default: return DexExtra.shared.categoryName(first.cat) ?? first.name
+        }
+    }
+
+    static let minimumSize = 8
+
+    static func key(_ item: ExtraItem) -> String { "\(item.cat)|\(item.t.last ?? "")" }
+
+    /// Items grouped (only groups with many entries) – the rest stays single.
+    static func build(_ items: [ExtraItem]) -> [Either] {
+        let groups = Dictionary(grouping: items, by: { key($0) }).filter { $0.value.count >= minimumSize }
+        var seen = Set<String>()
+        var result: [Either] = []
+        for item in items {
+            let k = key(item)
+            if let members = groups[k] {
+                if seen.insert(k).inserted { result.append(.group(ItemGroup(key: k, items: members))) }
+            } else {
+                result.append(.single(item))
+            }
+        }
+        return result
+    }
+
+    enum Either: Identifiable {
+        case single(ExtraItem)
+        case group(ItemGroup)
+        var id: String {
+            switch self {
+            case .single(let i): return "i\(i.id)"
+            case .group(let g): return "g" + g.key
+            }
+        }
+    }
+}
 
 private func matches(_ query: String, _ names: String...) -> Bool {
     let q = Fuzzy.normalize(query)
@@ -137,13 +186,22 @@ struct ItemList: View {
 
     var body: some View {
         let list = DexExtra.shared.items
+            .filter { $0.cat != 23 }   // "unused" items without real text
             .filter { game == nil || $0.g.isEmpty || $0.g.contains(game!.gen) }
             .filter { pocket == 0 || $0.p == pocket }
             .filter { matches(query, $0.de, $0.en) }
+        // while searching every item is shown on its own, otherwise big families are grouped
+        let entries: [ItemGroup.Either] = query.trimmingCharacters(in: .whitespaces).isEmpty ? ItemGroup.build(list) : list.map { .single($0) }
         LazyVStack(spacing: 8) {
-            ForEach(list) { item in
-                NavigationLink(value: DexItemRoute(id: item.id, game: game)) { ItemListRow(item: item) }
-                    .buttonStyle(.plain)
+            ForEach(entries) { entry in
+                switch entry {
+                case .single(let item):
+                    NavigationLink(value: DexItemRoute(id: item.id, game: game)) { ItemListRow(item: item) }
+                        .buttonStyle(.plain)
+                case .group(let group):
+                    NavigationLink(value: DexItemGroupRoute(key: group.key, game: game)) { ItemGroupRow(group: group) }
+                        .buttonStyle(.plain)
+                }
             }
             if list.isEmpty { ContentUnavailableView.search(text: query).padding(.top, 40) }
         }
@@ -168,6 +226,86 @@ struct ItemListRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+struct ItemGroupRow: View {
+    let group: ItemGroup
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                ForEach(Array(group.items.prefix(3).enumerated()), id: \.offset) { i, item in
+                    ItemPicture(key: item.key)
+                        .frame(width: 30, height: 30)
+                        .offset(x: CGFloat(i) * 6 - 6, y: CGFloat(i) * -4 + 4)
+                }
+            }
+            .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(group.title).font(.headline).lineLimit(1)
+                    Text(L("\(group.items.count) Varianten", "\(group.items.count) variants"))
+                        .font(.caption.weight(.bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                }
+                if let text = group.items.first?.text {
+                    Text(text).font(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading)
+                }
+            }
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+/// All variants of a grouped item family.
+struct ItemGroupView: View {
+    let key: String
+    let game: Game?
+    @State private var query = ""
+
+    var body: some View {
+        let all = DexExtra.shared.items.filter { ItemGroup.key($0) == key }
+            .filter { game == nil || $0.g.isEmpty || $0.g.contains(game!.gen) }
+        let group = ItemGroup(key: key, items: all)
+        let list = all.filter { matches(query, $0.de, $0.en) }
+        ScrollView {
+            LazyVStack(spacing: 8) {
+                if let text = all.first?.text {
+                    Text(text)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 4)
+                }
+                ForEach(list) { item in
+                    NavigationLink(value: DexItemRoute(id: item.id, game: game)) {
+                        HStack(spacing: 12) {
+                            ItemPicture(key: item.key).frame(width: 32, height: 32)
+                            Text(item.name).font(.body.weight(.medium)).foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                if list.isEmpty { ContentUnavailableView.search(text: query).padding(.top, 40) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 40)
+        }
+        .background(Color(.systemGroupedBackground))
+        .searchable(text: $query, prompt: L("Variante suchen", "Search variants"))
+        .navigationTitle(L("\(group.title) (\(all.count))", "\(group.title) (\(all.count))"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

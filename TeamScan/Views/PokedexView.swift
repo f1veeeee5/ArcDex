@@ -155,6 +155,9 @@ struct PokedexView: View {
             .navigationDestination(for: DexItemRoute.self) { route in
                 ItemDetailView(itemId: route.id, game: route.game)
             }
+            .navigationDestination(for: DexItemGroupRoute.self) { route in
+                ItemGroupView(key: route.key, game: route.game)
+            }
         }
     }
 
