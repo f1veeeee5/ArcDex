@@ -12,6 +12,7 @@ struct MovesetSuggestionsSection: View {
     @State private var undo: Snapshot?
     @State private var appliedKey: String?
     @State private var applyCount = 0
+    @Environment(\.pagerSwipeLock) private var swipeLock
 
     private var doublesFirst: Bool { member.team?.format == .doubles && game.isChampions }
 
@@ -20,29 +21,38 @@ struct MovesetSuggestionsSection: View {
         let comp = Movesets.shared.competitive(for: member.pokemonId, game: game, doublesFirst: doublesFirst)
         if story != nil || !comp.isEmpty {
             Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        if let story {
-                            card(story, pokemonId: member.pokemonId, key: "story")
+                VStack(alignment: .leading, spacing: 10) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: 12) {
+                            if let story {
+                                card(story, pokemonId: member.pokemonId, key: "story")
+                            }
+                            ForEach(Array(comp.enumerated()), id: \.offset) { i, item in
+                                card(item.set, pokemonId: item.pokemonId, key: "c\(i)")
+                            }
                         }
-                        ForEach(Array(comp.enumerated()), id: \.offset) { i, item in
-                            card(item.set, pokemonId: item.pokemonId, key: "c\(i)")
-                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .scrollClipDisabled()
+                    .blocksPagerSwipe(swipeLock)
+
+                    if undo != nil {
+                        Button {
+                            restore()
+                        } label: {
+                            Label(L("Rückgängig", "Undo"), systemImage: "arrow.uturn.backward")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .padding(.horizontal, 16)
+                        .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
+                    }
                 }
-                .scrollClipDisabled()
+                .padding(.vertical, 8)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
-
-                if undo != nil {
-                    Button {
-                        restore()
-                    } label: {
-                        Label(L("Rückgängig machen", "Undo"), systemImage: "arrow.uturn.backward")
-                    }
-                }
             } header: {
                 Text(L("Moveset-Vorschläge", "Moveset suggestions"))
             } footer: {

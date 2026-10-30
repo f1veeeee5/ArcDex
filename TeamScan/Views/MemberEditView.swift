@@ -543,6 +543,7 @@ struct MemberPagerView: View {
     @State private var currentId: UUID
     @State private var forward = true
     @State private var dragOffset: CGFloat = 0
+    @State private var swipeLock = PagerSwipeLock()
 
     init(team: Team, start: TeamMember) {
         self.team = team
@@ -558,6 +559,7 @@ struct MemberPagerView: View {
         Group {
             if let current {
                 MemberEditView(member: current, game: game, embedded: true)
+                    .environment(\.pagerSwipeLock, swipeLock)
                     .id(current.uuid)
                     .transition(.asymmetric(
                         insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
@@ -568,11 +570,17 @@ struct MemberPagerView: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 20)
                 .onChanged { value in
+                    // a horizontal list inside the editor (moveset suggestions) is being scrolled – don't switch Pokémon
+                    guard !swipeLock.isActive else { dragOffset = 0; return }
                     // only follow clearly horizontal drags, vertical scrolling stays untouched
                     guard abs(value.translation.width) > abs(value.translation.height) * 1.4 else { return }
                     dragOffset = value.translation.width * 0.25
                 }
                 .onEnded { value in
+                    guard !swipeLock.isActive else {
+                        withAnimation(.spring(duration: 0.3)) { dragOffset = 0 }
+                        return
+                    }
                     let dx = value.translation.width
                     let horizontal = abs(dx) > abs(value.translation.height) * 1.4
                     let predicted = value.predictedEndTranslation.width
@@ -602,6 +610,28 @@ struct MemberPagerView: View {
         withAnimation(.snappy(duration: 0.32)) {
             currentId = id
             dragOffset = 0
+        }
+    }
+}
+
+
+/// Lets horizontal scroll areas inside the editor stop the swipe to the next Pokémon.
+final class PagerSwipeLock {
+    var scrolling = false
+    var lastScroll = Date.distantPast
+    var isActive: Bool { scrolling || Date().timeIntervalSince(lastScroll) < 0.4 }
+}
+
+extension EnvironmentValues {
+    @Entry var pagerSwipeLock: PagerSwipeLock? = nil
+}
+
+extension View {
+    /// Use on horizontal scroll views inside the editor.
+    func blocksPagerSwipe(_ lock: PagerSwipeLock?) -> some View {
+        onScrollPhaseChange { _, phase in
+            lock?.scrolling = phase != .idle
+            lock?.lastScroll = Date()
         }
     }
 }
