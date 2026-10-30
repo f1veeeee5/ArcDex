@@ -19,6 +19,13 @@ extension SpriteURLs {
         }
         return list.compactMap(URL.init(string:))
     }
+
+    /// Still Black/White sprite (same look as the animations, Pokémon up to Gen 5).
+    static func gen5Still(_ id: Int, shiny: Bool) -> [URL] {
+        guard id <= 649 else { return [] }
+        let s = shiny ? "shiny/" : ""
+        return [URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/\(s)\(id).png")].compactMap { $0 }
+    }
 }
 
 // MARK: - GIF cache
@@ -35,7 +42,7 @@ final class GIFCache {
 
     private let memory = NSCache<NSURL, AnimationBox>()
     private var failed = Set<URL>()
-    private var running: [URL: Task<Animation?, Never>] = [:]
+    private var running: [URL: Task<Fetch, Never>] = [:]
     private let directory: URL
 
     private final class AnimationBox {
@@ -45,39 +52,65 @@ final class GIFCache {
 
     private init() {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        directory = caches.appendingPathComponent("animated", isDirectory: true)
+        directory = caches.appendingPathComponent("animated-sprites", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         memory.countLimit = 40
     }
 
     private func file(for url: URL) -> URL {
-        let name = url.pathComponents.suffix(2).joined(separator: "_")
+        // full path, so "black-white/animated/shiny/1.gif" and "showdown/shiny/1.gif" never share a file
+        let name = url.pathComponents.drop { $0 != "pokemon" }.joined(separator: "_")
         return directory.appendingPathComponent(name)
     }
 
     func cached(_ url: URL) -> Animation? { memory.object(forKey: url as NSURL)?.value }
 
+    /// Result of one download: the animation, "does not exist" (404) or a temporary problem (no network …).
+    private enum Fetch {
+        case found(Animation)
+        case missing
+        case temporary
+    }
+
     func animation(for url: URL) async -> Animation? {
         if let a = cached(url) { return a }
         if failed.contains(url) { return nil }
-        if let task = running[url] { return await task.value }
+        if let task = running[url] {
+            if case .found(let a) = await task.value { return a }
+            return nil
+        }
         let path = file(for: url)
-        let task = Task<Animation?, Never> {
-            var data = try? Data(contentsOf: path)
-            if data == nil {
-                guard let (d, response) = try? await URLSession.shared.data(from: url),
-                      (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
-                try? d.write(to: path)
-                data = d
+        let task = Task<Fetch, Never> {
+            if let data = try? Data(contentsOf: path),
+               let a = await Task.detached(priority: .userInitiated, operation: { GIFCache.decode(data) }).value {
+                return .found(a)
             }
-            guard let data else { return nil }
-            return await Task.detached(priority: .userInitiated) { GIFCache.decode(data) }.value
+            // two tries – a single hiccup must not make the animation disappear until the next app start
+            for attempt in 0..<2 {
+                if attempt > 0 { try? await Task.sleep(for: .milliseconds(600)) }
+                guard let (d, response) = try? await URLSession.shared.data(from: url),
+                      let http = response as? HTTPURLResponse else { continue }
+                if http.statusCode == 404 { return .missing }
+                guard http.statusCode == 200,
+                      let a = await Task.detached(priority: .userInitiated, operation: { GIFCache.decode(d) }).value else { continue }
+                try? d.write(to: path)
+                return .found(a)
+            }
+            return .temporary
         }
         running[url] = task
         let result = await task.value
         running[url] = nil
-        if let result { memory.setObject(AnimationBox(result), forKey: url as NSURL) } else { failed.insert(url) }
-        return result
+        switch result {
+        case .found(let a):
+            memory.setObject(AnimationBox(a), forKey: url as NSURL)
+            return a
+        case .missing:
+            failed.insert(url)
+            return nil
+        case .temporary:
+            return nil
+        }
     }
 
     nonisolated static func decode(_ data: Data) -> Animation? {
@@ -125,8 +158,11 @@ struct AnimatedPokemonSprite: View {
         Group {
             if wantsAnimation, let animation {
                 GIFView(animation: animation)
+            } else if wantsAnimation {
+                // still picture in the same Gen-5 style while the animation loads or when there is none
+                RemoteImage(urls: SpriteURLs.gen5Still(pokemonId, shiny: shiny) + SpriteURLs.pokemon(pokemonId, shiny: shiny, style: .pixel),
+                            pixelated: true)
             } else {
-                // static sprite while the animation loads, when it is turned off or does not exist
                 PokemonSprite(pokemonId: pokemonId, shiny: shiny)
             }
         }
