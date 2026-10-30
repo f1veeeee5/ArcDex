@@ -468,9 +468,9 @@ struct PokemonDetailView: View {
                     Text("\(rate) / 255").font(.headline.monospacedDigit())
                 }
                 HStack(spacing: 0) {
-                    BallChance(name: L("Pokéball", "Poké Ball"), color: .red, chance: Wiki.catchChance(rate: rate, ball: 1))
-                    BallChance(name: L("Superball", "Great Ball"), color: .blue, chance: Wiki.catchChance(rate: rate, ball: 1.5))
-                    BallChance(name: L("Hyperball", "Ultra Ball"), color: .yellow, chance: Wiki.catchChance(rate: rate, ball: 2))
+                    BallChance(name: L("Pokéball", "Poké Ball"), image: "ball-poke", chance: Wiki.catchChance(rate: rate, ball: 1))
+                    BallChance(name: L("Superball", "Great Ball"), image: "ball-great", chance: Wiki.catchChance(rate: rate, ball: 1.5))
+                    BallChance(name: L("Hyperball", "Ultra Ball"), image: "ball-ultra", chance: Wiki.catchChance(rate: rate, ball: 2))
                 }
                 Text(L("Ungefähre Chance pro Wurf bei vollen KP und ohne Statusproblem.", "Approximate chance per throw at full HP without status conditions."))
                     .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
@@ -572,18 +572,17 @@ private struct InfoTile: View {
 
 private struct BallChance: View {
     let name: String
-    let color: Color
+    /// pixel sprite from the games (asset catalog)
+    let image: String
     let chance: Double
     var body: some View {
         VStack(spacing: 6) {
-            ZStack {
-                Circle().fill(Color.white)
-                Circle().trim(from: 0.5, to: 1).fill(color.gradient)
-                Rectangle().fill(Color.black).frame(height: 3)
-                Circle().fill(Color.white).frame(width: 14, height: 14).overlay(Circle().stroke(Color.black, lineWidth: 2.5))
-            }
-            .frame(width: 44, height: 44)
-            .overlay(Circle().stroke(Color.black, lineWidth: 2.5))
+            Image(image)
+                .resizable()
+                .interpolation(.none)
+                .scaledToFit()
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
             Text(chance >= 1 ? "100 %" : String(format: "%.1f %%", chance * 100))
                 .font(.subheadline.weight(.bold).monospacedDigit())
             Text(name).font(.caption2).foregroundStyle(.secondary)
