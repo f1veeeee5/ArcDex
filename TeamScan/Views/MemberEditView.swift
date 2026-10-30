@@ -489,26 +489,55 @@ struct PokedexLinkButton: View {
 }
 
 /// Swipe left / right to go through the team. Opens on the tapped Pokémon.
+/// Deliberately not a paging TabView: the editor's Form must stay the page's own scroll view,
+/// otherwise iOS can't shrink the tab bar or blur the navigation bar while scrolling.
 struct MemberPagerView: View {
     let team: Team
-    @State private var selection: UUID
+    @State private var currentId: UUID
+    @State private var forward = true
+    @State private var dragOffset: CGFloat = 0
 
     init(team: Team, start: TeamMember) {
         self.team = team
-        _selection = State(initialValue: start.uuid)
+        _currentId = State(initialValue: start.uuid)
     }
 
     var body: some View {
         let members = team.sortedMembers
         let game = team.game
-        let current = members.first { $0.uuid == selection } ?? members.first
-        TabView(selection: $selection) {
-            ForEach(members) { m in
-                MemberEditView(member: m, game: game, embedded: true)
-                    .tag(m.uuid)
+        let index = members.firstIndex { $0.uuid == currentId } ?? 0
+        let current = members.indices.contains(index) ? members[index] : nil
+
+        Group {
+            if let current {
+                MemberEditView(member: current, game: game, embedded: true)
+                    .id(current.uuid)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)))
             }
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
+        .offset(x: dragOffset)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    // only follow clearly horizontal drags, vertical scrolling stays untouched
+                    guard abs(value.translation.width) > abs(value.translation.height) * 1.4 else { return }
+                    dragOffset = value.translation.width * 0.25
+                }
+                .onEnded { value in
+                    let dx = value.translation.width
+                    let horizontal = abs(dx) > abs(value.translation.height) * 1.4
+                    let predicted = value.predictedEndTranslation.width
+                    if horizontal && (dx < -70 || predicted < -160), index + 1 < members.count {
+                        switchTo(members[index + 1].uuid, forward: true)
+                    } else if horizontal && (dx > 70 || predicted > 160), index > 0 {
+                        switchTo(members[index - 1].uuid, forward: false)
+                    } else {
+                        withAnimation(.spring(duration: 0.3)) { dragOffset = 0 }
+                    }
+                }
+        )
         .background(Color(.systemGroupedBackground))
         .navigationTitle(current?.displayName ?? "")
         .navigationBarTitleDisplayMode(.inline)
@@ -517,7 +546,15 @@ struct MemberPagerView: View {
                 ToolbarItem(placement: .topBarTrailing) { PokedexLinkButton(member: current, game: game) }
             }
         }
-        .sensoryFeedback(.selection, trigger: selection)
+        .sensoryFeedback(.selection, trigger: currentId)
         .onDisappear { team.touch() }
+    }
+
+    private func switchTo(_ id: UUID, forward: Bool) {
+        self.forward = forward
+        withAnimation(.snappy(duration: 0.32)) {
+            currentId = id
+            dragOffset = 0
+        }
     }
 }
