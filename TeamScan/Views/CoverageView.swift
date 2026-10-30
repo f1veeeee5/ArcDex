@@ -228,13 +228,11 @@ struct TeamStatsView: View {
                 Text("\(Int(bst.rounded()))").font(.subheadline.weight(.bold).monospacedDigit())
             }
 
-            FlowLayout(spacing: 6) {
-                ForEach(verdicts(averages), id: \.self) { text in
-                    Text(text)
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Color(.tertiarySystemFill), in: Capsule())
-                }
+            // side by side; only when they don't fit, one below the other
+            let chips = verdicts(averages)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { ForEach(chips, id: \.self) { chip($0) } }
+                VStack(alignment: .leading, spacing: 6) { ForEach(chips, id: \.self) { chip($0) } }
             }
 
             if forms.count > 1 {
@@ -259,6 +257,15 @@ struct TeamStatsView: View {
         }
         .padding(16)
         .card()
+    }
+
+    private func chip(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Color(.tertiarySystemFill), in: Capsule())
     }
 
     private func speed(_ entry: (TeamMember, DexPokemon)) -> Int {

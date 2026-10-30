@@ -28,6 +28,7 @@ struct MemberEditView: View {
     @State private var showSummaryScan = false
     @State private var confirmDelete = false
     @AppStorage("showMovesetTips") private var showMovesetTips = true
+    @Environment(\.pagerSwipeLock) private var swipeLock
 
     private var dex: Dex { .shared }
     private var species: DexPokemon? { member.species }
@@ -394,6 +395,7 @@ struct MemberEditView: View {
                         }
                         Slider(value: Binding(get: { Double(member.evs[i]) }, set: { setEV(i, Int($0)) }), in: 0...252, step: 4)
                     }
+                    .holdsPagerSwipe(swipeLock)
                 }
                 HStack {
                     Text(L("Gesamt", "Total"))
@@ -416,6 +418,7 @@ struct MemberEditView: View {
                             Text("\(member.ivs[i])").monospacedDigit().foregroundStyle(.secondary)
                         }
                     }
+                    .holdsPagerSwipe(swipeLock)
                 }
             } label: {
                 Label(L("IVs (Individualwerte)", "IVs"), systemImage: "dial.medium")
@@ -645,6 +648,18 @@ extension EnvironmentValues {
 }
 
 extension View {
+    /// Use on sliders / steppers inside the editor: while a finger is on them, swiping never switches the Pokémon.
+    func holdsPagerSwipe(_ lock: PagerSwipeLock?) -> some View {
+        simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in lock?.scrolling = true }
+                .onEnded { _ in
+                    lock?.scrolling = false
+                    lock?.lastScroll = Date()
+                }
+        )
+    }
+
     /// Use on horizontal scroll views inside the editor.
     func blocksPagerSwipe(_ lock: PagerSwipeLock?) -> some View {
         onScrollPhaseChange { _, phase in
