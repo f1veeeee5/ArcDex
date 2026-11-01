@@ -223,14 +223,16 @@ struct TrainerCard: View {
         let color = trainer.type.map { TypeColor.color($0) } ?? Color.orange
         HStack(alignment: .center, spacing: 12) {
         // trainer standing on a small platform in the type colour (no box)
+        // the sprites have a wide empty border – so a narrow platform under the feet
         ZStack(alignment: .bottom) {
             BattlePlatform(colors: [color])
-                .frame(width: 62, height: 18)
+                .frame(width: 40, height: 11)
+                .padding(.bottom, 4)
             TrainerSprite(avatar: trainer.avatar)
-                .frame(width: 68, height: 68)
-                .padding(.bottom, 6)
+                .frame(width: 76, height: 76)
+                .padding(.bottom, 4)
         }
-        .frame(width: 70, height: 78)
+        .frame(width: 64, height: 82)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(trainer.name.text).font(.headline).lineLimit(1)
