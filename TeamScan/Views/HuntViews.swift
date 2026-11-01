@@ -294,7 +294,7 @@ struct HuntView: View {
                       systemImage: hunt.timerRunning ? "pause.fill" : "play.fill")
             }
             .buttonStyle(.appPrimary)
-            .tint(hunt.timerRunning ? .orange : .accentColor)
+            .tint(hunt.timerRunning ? .orange : .appAccent)
         }
         .padding(16)
         .card()

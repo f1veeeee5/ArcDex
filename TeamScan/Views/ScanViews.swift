@@ -124,7 +124,7 @@ private struct ScanLineOverlay: View {
     @State private var phase = false
     var body: some View {
         GeometryReader { geo in
-            LinearGradient(colors: [.clear, .accentColor.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [.clear, .appAccent.opacity(0.55), .clear], startPoint: .top, endPoint: .bottom)
                 .frame(height: 40)
                 .offset(y: phase ? geo.size.height - 20 : -20)
                 .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: phase)
@@ -238,7 +238,7 @@ struct MoveScanSheet: View {
                                 HStack(spacing: 12) {
                                     Image(systemName: selected.contains(hit.moveId) ? "checkmark.circle.fill" : "circle")
                                         .font(.title3)
-                                        .foregroundStyle(selected.contains(hit.moveId) ? Color.accentColor : Color(.tertiaryLabel))
+                                        .foregroundStyle(selected.contains(hit.moveId) ? Color.appAccent : Color(.tertiaryLabel))
                                     MoveRow(move: move)
                                 }
                                 .padding(.horizontal, 14).padding(.vertical, 8)

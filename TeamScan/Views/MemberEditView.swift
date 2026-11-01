@@ -132,7 +132,7 @@ struct MemberEditView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.appSecondary)
-                        .tint(member.shiny ? .orange : .accentColor)
+                        .tint(member.shiny ? .orange : .appAccent)
                     }
 
                     Button { picker = .species } label: {

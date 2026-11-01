@@ -136,7 +136,7 @@ struct MovesetSuggestionsSection: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.appPrimary)
-            .tint(applied ? .green : .accentColor)
+            .tint(applied ? .green : .appAccent)
         }
         .padding(14)
         .frame(width: 250, alignment: .topLeading)

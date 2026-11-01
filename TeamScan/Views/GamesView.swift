@@ -371,7 +371,7 @@ struct GameWheelPicker: View {
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.appPrimary)
-                    .tint(current.colors.first ?? .accentColor)
+                    .tint(current.colors.first ?? .appAccent)
                     .controlSize(.large)
                     .padding(.horizontal, 28)
                     .padding(.bottom, 8)

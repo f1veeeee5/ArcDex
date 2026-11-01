@@ -306,7 +306,7 @@ struct AISettingsSection: View {
 /// Short bullet points; **bold** (Markdown) for Pokémon and moves.
 struct BulletList: View {
     let points: [String]
-    var color: Color = .accentColor
+    var color: Color = .appAccent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {

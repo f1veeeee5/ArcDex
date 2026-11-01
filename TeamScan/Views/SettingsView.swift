@@ -36,6 +36,7 @@ struct SettingsView: View {
                         ForEach(Appearance.allCases) { Text($0.label).tag($0.rawValue) }
                     }
                     .pickerStyle(.segmented)
+                    ThemePicker()
                 }
 
                 Section {

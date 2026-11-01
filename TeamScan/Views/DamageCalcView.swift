@@ -403,9 +403,9 @@ struct CompactMenuLabel: View {
             Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
         }
         .font(.subheadline.weight(.medium))
-        .foregroundStyle(Color.accentColor)
+        .foregroundStyle(Color.appAccent)
         .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .background(Color.appAccent.opacity(0.12), in: Capsule())
         .frame(maxWidth: 200, alignment: .trailing)
         .fixedSize(horizontal: false, vertical: true)
     }
