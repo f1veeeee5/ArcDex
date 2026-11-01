@@ -412,28 +412,7 @@ struct GameGrid: View {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                         ForEach(group.games) { game in
                             Button { onPick(game) } label: {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        GameMechanicIcon(game: game, size: 18)
-                                        Spacer()
-                                        Text(game.shortTitle).font(.caption.weight(.heavy))
-                                            .padding(.horizontal, 7).padding(.vertical, 3)
-                                            .background(.white.opacity(0.22), in: Capsule())
-                                    }
-                                    Spacer(minLength: 0)
-                                    Text(game.title).font(.headline).multilineTextAlignment(.leading)
-                                        .lineLimit(2).minimumScaleFactor(0.8)
-                                }
-                                .foregroundStyle(.white)
-                                .padding(12)
-                                .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-                                .background(game.gradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                .overlay {
-                                    if game == suggested {
-                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                            .strokeBorder(.white.opacity(0.9), lineWidth: 3)
-                                    }
-                                }
+                                GameCoverCard(game: game, highlighted: game == suggested)
                             }
                             .buttonStyle(.plain)
                         }
@@ -442,5 +421,91 @@ struct GameGrid: View {
             }
             .padding(16)
         }
+    }
+}
+
+
+/// Game card for the game picker: gradient, name and the cover Pokémon large and cut off at the bottom right.
+struct GameCoverCard: View {
+    let game: Game
+    var highlighted = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        let covers = game.coverPokemon
+        ZStack(alignment: .bottomTrailing) {
+            game.gradient
+            // cover Pokémon (two for double editions, the second one behind)
+            ZStack(alignment: .bottomTrailing) {
+                if covers.count > 1 {
+                    PokemonSprite(pokemonId: covers[1])
+                        .frame(width: 78, height: 78)
+                        .offset(x: -46, y: 4)
+                        .opacity(0.9)
+                }
+                if let first = covers.first {
+                    PokemonSprite(pokemonId: first)
+                        .frame(width: 92, height: 92)
+                        .offset(x: 14, y: 14)
+                }
+            }
+            .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(game.shortTitle).font(.caption.weight(.heavy))
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(.white.opacity(0.22), in: Capsule())
+                    Spacer()
+                    if covers.isEmpty { GameMechanicIcon(game: game, size: 18) }
+                }
+                Spacer(minLength: 0)
+                Text(game.title).font(.headline).multilineTextAlignment(.leading)
+                    .lineLimit(2).minimumScaleFactor(0.8)
+                    .shadow(color: .black.opacity(0.35), radius: 3)
+                    .padding(.trailing, covers.isEmpty ? 0 : 36)
+            }
+            .foregroundStyle(.white)
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: 110)
+        .clipShape(shape)
+        .overlay {
+            if highlighted { shape.strokeBorder(.white.opacity(0.9), lineWidth: 3) }
+        }
+        .contentShape(shape)
+    }
+}
+
+extension Game {
+    /// Pokémon on the box art (PokéAPI keys), first one in front.
+    private var coverKeys: [String] {
+        switch self {
+        case .rb: return ["charizard", "blastoise"]
+        case .y: return ["pikachu"]
+        case .gs, .hgss: return ["ho-oh", "lugia"]
+        case .c: return ["suicune"]
+        case .rs: return ["groudon", "kyogre"]
+        case .e: return ["rayquaza"]
+        case .frlg: return ["charizard", "venusaur"]
+        case .dp, .bdsp: return ["dialga", "palkia"]
+        case .pt: return ["giratina-origin"]
+        case .bw: return ["reshiram", "zekrom"]
+        case .b2w2: return ["kyurem-black", "kyurem-white"]
+        case .xy: return ["xerneas", "yveltal"]
+        case .oras: return ["groudon-primal", "kyogre-primal"]
+        case .sm: return ["solgaleo", "lunala"]
+        case .lgpe: return ["pikachu", "eevee"]
+        case .swsh: return ["zacian-crowned", "zamazenta-crowned"]
+        case .pla: return ["arceus"]
+        case .sv: return ["koraidon", "miraidon"]
+        case .za: return ["zygarde-50"]
+        case .champ: return []
+        }
+    }
+
+    var coverPokemon: [Int] {
+        let keys = coverKeys
+        return keys.compactMap { key in Dex.shared.pokemon.first { $0.key == key }?.id }
     }
 }
