@@ -275,7 +275,7 @@ struct EmptySavesView: View {
             Button(action: onCreate) {
                 Label(L("Spielstand anlegen", "Create save file"), systemImage: "plus").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             .controlSize(.large)
             .padding(.top, 6)
         }
@@ -429,13 +429,13 @@ struct EmptyTeamsView: View {
                 Button(action: onScan) {
                     Label(L("Team scannen", "Scan team"), systemImage: "camera.viewfinder").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.appPrimary)
                 .controlSize(.large)
                 HStack(spacing: 10) {
                     Button(action: onCreate) { Label(L("Neues Team", "New team"), systemImage: "plus").frame(maxWidth: .infinity) }
                     Button(action: onImport) { Label("Showdown", systemImage: "square.and.arrow.down").frame(maxWidth: .infinity) }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
                 .controlSize(.large)
             }
             .padding(.top, 6)

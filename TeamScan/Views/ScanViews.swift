@@ -16,13 +16,13 @@ struct ImageSourceButtons: View {
                 Button { showCamera = true } label: {
                     Label(L("Foto aufnehmen", "Take photo"), systemImage: "camera.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.appPrimary)
                 .controlSize(.large)
             }
             PhotosPicker(selection: $photoItem, matching: .images) {
                 Label(L("Screenshot / Foto wählen", "Choose screenshot / photo"), systemImage: "photo.on.rectangle").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.large)
         }
         .onChange(of: photoItem) { _, item in
@@ -257,7 +257,7 @@ struct MoveScanSheet: View {
                 Button { showManual = true } label: { Label(L("Manuell", "Manual"), systemImage: "plus").frame(maxWidth: .infinity) }
                 Button { phase = .pick } label: { Label(L("Neues Foto", "New photo"), systemImage: "camera").frame(maxWidth: .infinity) }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.large)
             RecognizedTextView(lines: lines)
         }
@@ -403,7 +403,7 @@ struct MemberScanSheet: View {
                 }
                 Button { phase = .pick } label: { Label(L("Neues Foto", "New photo"), systemImage: "camera").frame(maxWidth: .infinity) }
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .controlSize(.large)
             RecognizedTextView(lines: lines)
         }

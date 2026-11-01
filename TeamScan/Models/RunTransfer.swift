@@ -244,7 +244,7 @@ struct RunImportSheet: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.appPrimary)
                 .controlSize(.large)
             }
             .padding(20)

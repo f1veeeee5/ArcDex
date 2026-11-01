@@ -200,7 +200,7 @@ struct HuntView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.appSecondary)
             .tint(.orange)
             .controlSize(.large)
         }
@@ -284,7 +284,7 @@ struct HuntView: View {
             Spacer()
             if hunt.totalTime() > 0 && !hunt.timerRunning {
                 Button { hunt.elapsed = 0 } label: { Image(systemName: "arrow.counterclockwise") }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                     .accessibilityLabel(L("Timer zurücksetzen", "Reset timer"))
             }
             Button {
@@ -293,7 +293,7 @@ struct HuntView: View {
                 Label(hunt.timerRunning ? L("Pause", "Pause") : L("Start", "Start"),
                       systemImage: hunt.timerRunning ? "pause.fill" : "play.fill")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             .tint(hunt.timerRunning ? .orange : .accentColor)
         }
         .padding(16)

@@ -47,8 +47,7 @@ struct MovesetSuggestionsSection: View {
                             Label(L("Rückgängig", "Undo"), systemImage: "arrow.uturn.backward")
                                 .font(.subheadline.weight(.semibold))
                         }
-                        .buttonStyle(.bordered)
-                        .buttonBorderShape(.capsule)
+                        .buttonStyle(.appSecondary)
                         .padding(.horizontal, 16)
                         .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
                     }
@@ -136,7 +135,7 @@ struct MovesetSuggestionsSection: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             .tint(applied ? .green : .accentColor)
         }
         .padding(14)

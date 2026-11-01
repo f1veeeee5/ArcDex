@@ -389,12 +389,12 @@ struct AddMemberCard: View {
             Button(action: onAdd) {
                 Label(L("Hinzufügen", "Add"), systemImage: "plus").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             if let onScan {
                 Button(action: onScan) {
                     Label(L("Scannen", "Scan"), systemImage: "camera.viewfinder").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.appSecondary)
             }
             Spacer(minLength: 0)
         }

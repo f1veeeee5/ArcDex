@@ -131,22 +131,21 @@ struct MemberEditView: View {
                             Label(member.shiny ? L("Shiny", "Shiny") : L("Nicht shiny", "Not shiny"), systemImage: member.shiny ? "sparkles" : "sparkle")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
-                        .tint(member.shiny ? .yellow : .gray)
+                        .buttonStyle(.appSecondary)
+                        .tint(member.shiny ? .orange : .accentColor)
                     }
 
                     Button { picker = .species } label: {
                         Label(L("Ändern", "Change"), systemImage: "arrow.triangle.2.circlepath").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.appSecondary)
                 }
 
                 if let team = member.team {
                     Button { showCalc = true } label: {
                         Label(L("Schaden berechnen", "Calculate damage"), systemImage: "bolt.horizontal.fill").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
+                    .buttonStyle(.appPrimary)
                     .sheet(isPresented: $showCalc) {
                         DamageCalcView(game: game, team: team, member: member)
                     }

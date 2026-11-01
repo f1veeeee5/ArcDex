@@ -325,7 +325,7 @@ struct BackupRestoreSheet: View {
                 } label: {
                     Text(L("Wiederherstellen", "Restore")).font(.headline).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.appPrimary)
                 .controlSize(.large)
             }
             .padding(20)

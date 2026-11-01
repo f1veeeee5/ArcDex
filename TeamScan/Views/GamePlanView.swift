@@ -51,8 +51,7 @@ struct GamePlanView: View {
                     Button { generate() } label: {
                         Label(L("Neu erstellen", "Recreate"), systemImage: "arrow.clockwise").font(.caption.weight(.semibold))
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
+                    .buttonStyle(.appSecondary)
                     .disabled(isUnavailable(engine))
                 }
             } else {
@@ -69,7 +68,7 @@ struct GamePlanView: View {
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.appPrimary)
                         .controlSize(.large)
                         .disabled(team.members.isEmpty)
                         Text(L("mit \(engine.title)", "with \(engine.title)")).font(.caption).foregroundStyle(.tertiary)

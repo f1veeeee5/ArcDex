@@ -195,8 +195,7 @@ struct NuzlockeRunView: View {
                         .lineLimit(1)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
+                .buttonStyle(.appSecondary)
             }
         }
     }
@@ -287,8 +286,7 @@ struct NuzlockeRunView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.capsule)
+            .buttonStyle(.appPrimary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -452,7 +450,7 @@ struct EmptyRunCard: View {
             Button(action: onAdd) {
                 Label(L("Fang eintragen", "Add catch"), systemImage: "plus").frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.appPrimary)
             .controlSize(.large)
         }
         .padding(20)
