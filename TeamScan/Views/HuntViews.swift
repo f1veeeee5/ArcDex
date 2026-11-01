@@ -574,7 +574,7 @@ struct HuntSettingsSheet: View {
                 }
 
                 Section {
-                    Stepper(L("Pro Tippen: +\(draft.step)", "Per tap: +\(draft.step)"), value: $draft.step, in: 1...10)
+                    AppStepper(L("Pro Tippen: +\(draft.step)", "Per tap: +\(draft.step)"), value: $draft.step, in: 1...10)
                     HStack {
                         Text(hunt == nil ? L("Startwert", "Start at") : L("Zählerstand", "Counter"))
                         TextField("0", text: $countText)

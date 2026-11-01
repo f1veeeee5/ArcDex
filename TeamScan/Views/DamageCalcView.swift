@@ -26,6 +26,9 @@ struct DamageCalcView: View {
         self.pool = pool
         self.poolTitle = poolTitle
         _memberId = State(initialValue: member?.uuid ?? team.sortedMembers.first?.uuid)
+        var opts = DamageOptions()
+        if game.hasDynamax, let i = opponentIndex, i < pool.count, pool[i].gmax == true { opts.defenderDynamax = true }
+        _options = State(initialValue: opts)
         if let i = opponentIndex, i < pool.count {
             _opponent = State(initialValue: .pool(i))
         } else if !pool.isEmpty {
@@ -45,7 +48,7 @@ struct DamageCalcView: View {
     private func sets(for pokemonId: Int, level: Int) -> [(title: String, entry: MovesetEntry?)] {
         var list: [(String, MovesetEntry?)] = []
         if let story = Movesets.shared.story(for: pokemonId, game: game, level: level) {
-            list.append((L("Story (Level-Attacken)", "Story (level-up moves)"), story))
+            list.append((L("Story", "Story"), story))
         }
         for c in Movesets.shared.competitive(for: pokemonId, game: game) where c.pokemonId == pokemonId {
             list.append((c.set.sourceTitle + (c.set.roleTitle.map { " · \($0)" } ?? ""), c.set))
@@ -57,7 +60,10 @@ struct DamageCalcView: View {
     private var defender: Combatant? {
         switch opponent {
         case .pool(let i):
-            return i < pool.count ? Combatant.trainer(pool[i], game: game) : nil
+            guard i < pool.count, var c = Combatant.trainer(pool[i], game: game) else { return nil }
+            // a Gigantamax trainer Pokémon is shown in its G-Max form while dynamaxed
+            if options.defenderDynamax, pool[i].gmax == true, let g = Dex.shared.gmaxForm(for: c.pokemonId, game: game) { c.pokemonId = g.id }
+            return c
         case .free(let id, let level, let set):
             let list = sets(for: id, level: level)
             return Combatant.free(pokemonId: id, level: level, set: list[min(set, list.count - 1)].entry, game: game)
@@ -69,7 +75,7 @@ struct DamageCalcView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let member, let me = Combatant.member(member, game: game), let them = defender {
-                        sides(me: me, them: them)
+                        sides(me: me, them: them, myDyna: options.attackerDynamax, theirDyna: options.defenderDynamax)
                         if case .free(let id, let level, let set) = opponent {
                             freeOptions(id: id, level: level, set: set)
                         }
@@ -77,7 +83,8 @@ struct DamageCalcView: View {
                         damageSection(title: L("Deine Attacken", "Your moves"), icon: "arrow.right.circle.fill",
                                       results: DamageCalc.results(attacker: me, defender: them, game: game, options: options),
                                       empty: L("\(member.displayName) hat keine Attacken eingetragen.", "\(member.displayName) has no moves entered."), mine: true)
-                        let reverse = DamageOptions(weather: options.weather, critical: options.critical)
+                        let reverse = DamageOptions(weather: options.weather, critical: options.critical,
+                                                    attackerDynamax: options.defenderDynamax, defenderDynamax: options.attackerDynamax)
                         damageSection(title: L("Attacken von \(them.name)", "\(them.name)'s moves"), icon: "arrow.left.circle.fill",
                                       results: DamageCalc.results(attacker: them, defender: me, game: game, options: reverse),
                                       empty: L("Die Attacken dieses Pokémon sind nicht bekannt.", "This Pokémon's moves aren't known."), mine: false)
@@ -116,7 +123,7 @@ struct DamageCalcView: View {
 
     // MARK: Sides
 
-    private func sides(me: Combatant, them: Combatant) -> some View {
+    private func sides(me: Combatant, them: Combatant, myDyna: Bool, theirDyna: Bool) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Menu {
                 Picker(selection: Binding(get: { member?.uuid }, set: { memberId = $0 })) {
@@ -126,7 +133,7 @@ struct DamageCalcView: View {
                 } label: { EmptyView() }
                 .pickerStyle(.inline)
             } label: {
-                sideColumn(me, caption: L("Dein Pokémon", "Your Pokémon"))
+                sideColumn(me, caption: L("Dein Pokémon", "Your Pokémon"), dynamax: myDyna)
             }
             .buttonStyle(.plain)
 
@@ -139,7 +146,10 @@ struct DamageCalcView: View {
                 if !pool.isEmpty {
                     Section(poolTitle ?? L("Gegner", "Opponent")) {
                         ForEach(Array(pool.enumerated()), id: \.offset) { i, p in
-                            Button("\(Dex.shared.pokemon(p.p)?.name ?? "?") · Lv. \(p.l)") { opponent = .pool(i) }
+                            Button("\(Dex.shared.pokemon(p.p)?.name ?? "?") · Lv. \(p.l)") {
+                                opponent = .pool(i)
+                                if game.hasDynamax { options.defenderDynamax = p.gmax == true }
+                            }
                         }
                     }
                 }
@@ -147,14 +157,14 @@ struct DamageCalcView: View {
                     Label(L("Anderes Pokémon …", "Other Pokémon …"), systemImage: "magnifyingglass")
                 }
             } label: {
-                sideColumn(them, caption: L("Gegner", "Opponent"))
+                sideColumn(them, caption: L("Gegner", "Opponent"), dynamax: theirDyna)
             }
             .buttonStyle(.plain)
         }
         .padding(.top, 8)
     }
 
-    private func sideColumn(_ c: Combatant, caption: String) -> some View {
+    private func sideColumn(_ c: Combatant, caption: String, dynamax: Bool) -> some View {
         VStack(spacing: 4) {
             Text(caption).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             ZStack(alignment: .bottom) {
@@ -170,8 +180,8 @@ struct DamageCalcView: View {
                 Text(c.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
                 Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
             }
-            Text(L("Lv. \(c.level) · \(c.stats[0]) KP", "Lv. \(c.level) · \(c.stats[0]) HP"))
-                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            Text(L("Lv. \(c.level) · \(c.stats[0] * (dynamax ? 2 : 1)) KP", "Lv. \(c.level) · \(c.stats[0] * (dynamax ? 2 : 1)) HP"))
+                .font(.caption.monospacedDigit()).foregroundStyle(dynamax ? Color.red : Color.secondary)
             HStack(spacing: 3) { ForEach(c.types, id: \.self) { TypeBadge(typeId: $0, small: true) } }
         }
         .frame(maxWidth: .infinity)
@@ -181,7 +191,7 @@ struct DamageCalcView: View {
     private func freeOptions(id: Int, level: Int, set: Int) -> some View {
         let list = sets(for: id, level: level)
         return VStack(spacing: 10) {
-            Stepper(value: Binding(get: { level }, set: { opponent = .free(pokemonId: id, level: min(max($0, 1), 100), set: set) }), in: 1...100) {
+            AppStepper(value: Binding(get: { level }, set: { opponent = .free(pokemonId: id, level: min(max($0, 1), 100), set: set) }), in: 1...100) {
                 HStack {
                     Text(L("Level des Gegners", "Opponent level"))
                     Spacer()
@@ -189,13 +199,17 @@ struct DamageCalcView: View {
                 }
             }
             Divider()
-            HStack {
+            HStack(spacing: 12) {
                 Text(L("Attacken", "Moves"))
-                Spacer()
-                Picker("", selection: Binding(get: { min(set, list.count - 1) }, set: { opponent = .free(pokemonId: id, level: level, set: $0) })) {
-                    ForEach(Array(list.enumerated()), id: \.offset) { i, s in Text(s.title).tag(i) }
+                Spacer(minLength: 4)
+                Menu {
+                    Picker(selection: Binding(get: { min(set, list.count - 1) }, set: { opponent = .free(pokemonId: id, level: level, set: $0) })) {
+                        ForEach(Array(list.enumerated()), id: \.offset) { i, s in Text(s.title).tag(i) }
+                    } label: { EmptyView() }
+                    .pickerStyle(.inline)
+                } label: {
+                    CompactMenuLabel(text: list[min(set, list.count - 1)].title)
                 }
-                .pickerStyle(.menu)
             }
         }
         .padding(14)
@@ -204,16 +218,25 @@ struct DamageCalcView: View {
 
     private var optionsCard: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(spacing: 12) {
                 Label(L("Wetter", "Weather"), systemImage: options.weather.icon)
-                Spacer()
-                Picker("", selection: $options.weather) {
-                    ForEach(Weather.allCases) { w in Label(w.title, systemImage: w.icon).tag(w) }
+                Spacer(minLength: 4)
+                Menu {
+                    Picker(selection: $options.weather) {
+                        ForEach(Weather.allCases) { w in Label(w.title, systemImage: w.icon).tag(w) }
+                    } label: { EmptyView() }
+                    .pickerStyle(.inline)
+                } label: {
+                    CompactMenuLabel(text: options.weather.title)
                 }
-                .pickerStyle(.menu)
             }
             Divider()
             Toggle(isOn: $options.critical) { Label(L("Volltreffer", "Critical hit"), systemImage: "scope") }
+            if game.hasDynamax {
+                Divider()
+                Toggle(isOn: $options.attackerDynamax) { Label(L("Du dynamaxt", "You Dynamax"), systemImage: "arrow.up.left.and.arrow.down.right") }
+                Toggle(isOn: $options.defenderDynamax) { Label(L("Gegner dynamaxt", "Opponent Dynamaxes"), systemImage: "arrow.up.left.and.arrow.down.right") }
+            }
             Divider()
             boostRow(L("Dein Angriff", "Your attack"), value: $options.attackBoost)
             boostRow(L("Verteidigung des Gegners", "Opponent's defense"), value: $options.defenseBoost)
@@ -223,7 +246,7 @@ struct DamageCalcView: View {
     }
 
     private func boostRow(_ title: String, value: Binding<Int>) -> some View {
-        Stepper(value: value, in: -6...6) {
+        AppStepper(value: value, in: -6...6) {
             HStack {
                 Text(title)
                 Spacer()
@@ -246,7 +269,7 @@ struct DamageCalcView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(results.enumerated()), id: \.offset) { i, r in
                         if i > 0 { Divider().padding(.leading, 14) }
-                        DamageRow(result: r, mine: mine)
+                        DamageRow(result: r, mine: mine, maxMove: mine ? options.attackerDynamax : options.defenderDynamax)
                     }
                 }
                 .card()
@@ -270,11 +293,12 @@ struct DamageCalcView: View {
     }
 }
 
-/// One move: damage range in % with a bar and the number of hits.
+/// One move: damage range in % with a bar (in the move's type colour) and the number of hits.
 struct DamageRow: View {
     let result: DamageResult
-    /// own attack: lots of damage is good (green), opponent's attack: lots of damage is bad (red)
+    /// own attack or the opponent's – decides how the number of hits is worded and coloured
     var mine = true
+    var maxMove = false
 
     var body: some View {
         let m = result.move
@@ -284,6 +308,9 @@ struct DamageRow: View {
                 HStack(spacing: 5) {
                     Circle().fill(color).frame(width: 8, height: 8)
                     Text(m.name).font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                    if maxMove && result.note == nil {
+                        Text("MAX").font(.caption2.weight(.heavy)).foregroundStyle(.red)
+                    }
                 }
                 .padding(.horizontal, 9).padding(.vertical, 4)
                 .background(color.opacity(0.16), in: Capsule())
@@ -301,19 +328,21 @@ struct DamageRow: View {
             if let note = result.note {
                 Text(note).font(.caption).foregroundStyle(.secondary)
             } else {
-                // HP bar: solid = sure damage, light = random range
+                // HP bar in the type colour: solid = sure damage, light = random range
                 GeometryReader { geo in
                     let w = geo.size.width
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color(.tertiarySystemFill))
-                        Capsule().fill(barColor.opacity(0.35)).frame(width: w * min(result.maxPercent, 1))
-                        Capsule().fill(barColor.gradient).frame(width: w * min(result.minPercent, 1))
+                        Capsule().fill(color.opacity(0.35)).frame(width: w * min(result.maxPercent, 1))
+                        Capsule().fill(color.gradient).frame(width: w * min(result.minPercent, 1))
                     }
                 }
                 .frame(height: 8)
                 HStack {
                     if let hits = result.hitsText {
-                        Text(hits).font(.caption.weight(.semibold)).foregroundStyle(barColor)
+                        Text(verdict.map { "\($0) · \(hits)" } ?? hits)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(hitsColor)
                     }
                     Spacer()
                     Text(verbatim: "\(result.min)–\(result.max) / \(result.defenderHP)")
@@ -324,10 +353,29 @@ struct DamageRow: View {
         .padding(14)
     }
 
-    private var barColor: Color {
-        let strong = result.maxPercent >= 1, medium = result.maxPercent >= 0.5
-        if mine { return strong ? .green : medium ? .orange : .red }
-        return strong ? .red : medium ? .orange : .green
+    /// fewest hits needed for a K.O.
+    private var hits: Int {
+        result.max > 0 ? Int((Double(result.defenderHP) / Double(result.max)).rounded(.up)) : 99
+    }
+
+    /// Own attack: few hits = good. Opponent's attack: few hits = dangerous.
+    private var hitsColor: Color {
+        switch hits {
+        case ...1: return mine ? .green : .red
+        case 2: return mine ? .green : .orange
+        case 3...4: return .orange
+        default: return .secondary
+        }
+    }
+
+    private var verdict: String? {
+        guard !mine else { return nil }
+        switch hits {
+        case ...1: return L("Gefährlich", "Dangerous")
+        case 2: return L("Stark", "Strong")
+        case 3...4: return L("Mittel", "Medium")
+        default: return L("Harmlos", "Harmless")
+        }
     }
 
     private var effectivenessText: String {
@@ -338,5 +386,23 @@ struct DamageRow: View {
 
     private func percent(_ v: Double) -> String {
         String(format: "%.0f", v * 100)
+    }
+}
+
+/// Menu label that stays on one line inside its row.
+struct CompactMenuLabel: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text).lineLimit(1).truncationMode(.tail)
+            Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
+        }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(.tint)
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .frame(maxWidth: 200, alignment: .trailing)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }

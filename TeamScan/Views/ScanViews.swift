@@ -497,7 +497,7 @@ private struct ScannedRow: View {
                     Toggle("", isOn: $result.include).labelsHidden()
                 }
             }
-            Stepper(value: Binding(get: { result.level ?? 50 }, set: { result.level = $0 }), in: 1...100) {
+            AppStepper(value: Binding(get: { result.level ?? 50 }, set: { result.level = $0 }), in: 1...100) {
                 HStack {
                     Text(L("Level", "Level")).font(.subheadline)
                     Spacer()

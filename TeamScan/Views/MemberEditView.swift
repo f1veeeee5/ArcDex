@@ -214,7 +214,7 @@ struct MemberEditView: View {
                 }
                 .onAppear { if member.level != fixed { member.level = fixed } }
             } else {
-                Stepper(value: $member.level, in: 1...100) {
+                AppStepper(value: $member.level, in: 1...100) {
                     HStack {
                         Text(L("Level", "Level"))
                         Spacer()
@@ -471,7 +471,7 @@ struct MemberEditView: View {
             DisclosureGroup {
                 let names = StatNames.short
                 ForEach(0..<6, id: \.self) { i in
-                    Stepper(value: Binding(get: { member.ivs[i] }, set: { v in var a = member.ivs; a[i] = v; member.ivs = a }), in: 0...31) {
+                    AppStepper(value: Binding(get: { member.ivs[i] }, set: { v in var a = member.ivs; a[i] = v; member.ivs = a }), in: 0...31) {
                         HStack {
                             Text(names[i])
                             Spacer()

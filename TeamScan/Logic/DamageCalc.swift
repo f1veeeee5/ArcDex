@@ -93,6 +93,9 @@ struct DamageOptions: Equatable {
     /// stat stages of the attacker's attacking stat and the defender's defending stat (−6…+6)
     var attackBoost = 0
     var defenseBoost = 0
+    /// Dynamax / Gigantamax (Sword/Shield): twice the HP, moves become Max Moves
+    var attackerDynamax = false
+    var defenderDynamax = false
 }
 
 /// Result for one move.
@@ -129,15 +132,19 @@ enum DamageCalc {
 
     static func result(move: DexMove, attacker: Combatant, defender: Combatant, game: Game, options: DamageOptions) -> DamageResult {
         let gen = game.gen
-        let hp = defender.stats[0]
+        // Dynamax level 10 assumed: twice the HP
+        let hp = defender.stats[0] * (options.defenderDynamax ? 2 : 1)
         let eff = TypeChart.multiplier(attack: move.t, defense: defender.types, abilityKey: defender.abilityKey, gen: gen)
         func none(_ note: String?) -> DamageResult {
             DamageResult(move: move, min: 0, max: 0, defenderHP: hp, effectiveness: eff, note: note)
         }
-        if move.c == 1 { return none(L("Statusattacke", "Status move")) }
+        if move.c == 1 {
+            return none(options.attackerDynamax ? L("Wird zu Dyna-Wall (Schutz)", "Becomes Max Guard (protects)") : L("Statusattacke", "Status move"))
+        }
         if eff == 0 { return none(L("Keine Wirkung", "No effect")) }
 
-        // fixed damage
+        // fixed damage (not as Max Move)
+        if !options.attackerDynamax {
         switch move.key {
         case "seismic-toss", "night-shade":
             return DamageResult(move: move, min: attacker.level, max: attacker.level, defenderHP: hp, effectiveness: eff, note: nil)
@@ -150,7 +157,9 @@ enum DamageCalc {
             return DamageResult(move: move, min: half, max: half, defenderHP: hp, effectiveness: eff, note: nil)
         default: break
         }
+        }
         var power = move.p
+        if options.attackerDynamax, power > 1 { power = maxMovePower(move) }
         if power <= 1 { return none(L("Stärke hängt von der Situation ab", "Power depends on the situation")) }
 
         let physical: Bool = gen <= 3
@@ -194,6 +203,21 @@ enum DamageCalc {
         let minDamage = Swift.max(Int(floor(floor(base * 0.85) * mods)), 1)
         let maxDamage = Swift.max(Int(floor(base * mods)), 1)
         return DamageResult(move: move, min: minDamage, max: maxDamage, defenderHP: hp, effectiveness: eff, note: nil)
+    }
+
+    /// Power of the Max Move a damaging move turns into (Fighting and Poison have their own, lower table).
+    static func maxMovePower(_ move: DexMove) -> Int {
+        let p = move.p
+        let low = move.t == T.fighting || move.t == T.poison
+        switch p {
+        case ...40: return low ? 70 : 90
+        case ...50: return low ? 75 : 100
+        case ...60: return low ? 80 : 110
+        case ...70: return low ? 85 : 120
+        case ...100: return low ? 90 : 130
+        case ...140: return low ? 95 : 140
+        default: return low ? 100 : 150
+        }
     }
 
     private static func stage(_ s: Int) -> Double {

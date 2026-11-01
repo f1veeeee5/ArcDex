@@ -66,7 +66,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Stepper(value: $defaultLevel, in: 1...100) {
+                    AppStepper(value: $defaultLevel, in: 1...100) {
                         HStack {
                             Text(L("Standard-Level", "Default level"))
                             Spacer()

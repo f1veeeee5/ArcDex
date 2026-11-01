@@ -544,7 +544,7 @@ struct EncounterSheet: View {
 
                     Section {
                         TextField(L("Spitzname", "Nickname"), text: $nickname)
-                        Stepper(value: $level, in: 1...100) {
+                        AppStepper(value: $level, in: 1...100) {
                             HStack {
                                 Text("Level")
                                 Spacer()
@@ -680,7 +680,7 @@ struct LinkSheet: View {
                                         Spacer()
                                     }
                                 }
-                                Stepper(value: Binding(get: { m.level }, set: { m.level = $0; m.team?.touch() }), in: 1...100) {
+                                AppStepper(value: Binding(get: { m.level }, set: { m.level = $0; m.team?.touch() }), in: 1...100) {
                                     HStack { Text("Level"); Spacer(); Text("\(m.level)").monospacedDigit().foregroundStyle(.secondary) }
                                 }
                                 Toggle(isOn: Binding(get: { m.shiny }, set: { m.shiny = $0 })) { Label("Shiny", systemImage: "sparkles") }
@@ -896,7 +896,7 @@ struct RulesSheet: View {
                 Section {
                     Toggle(L("Level-Cap", "Level cap"), isOn: $rules.levelCapOn)
                     if rules.levelCapOn {
-                        Stepper(value: $rules.levelCap, in: 2...100) {
+                        AppStepper(value: $rules.levelCap, in: 2...100) {
                             HStack { Text(L("Aktueller Cap", "Current cap")); Spacer(); Text("\(rules.levelCap)").monospacedDigit().foregroundStyle(.secondary) }
                         }
                     }

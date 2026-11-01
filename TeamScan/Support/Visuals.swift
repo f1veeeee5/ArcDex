@@ -387,3 +387,53 @@ struct MarqueeText: View {
             }
     }
 }
+
+
+/// Stepper with soft − / + buttons (the system stepper draws a dark outline in light mode).
+/// Holding a button repeats.
+struct AppStepper<Label: View>: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    var step = 1
+    @ViewBuilder var label: () -> Label
+
+    init(value: Binding<Int>, in range: ClosedRange<Int>, step: Int = 1, @ViewBuilder label: @escaping () -> Label) {
+        _value = value
+        self.range = range
+        self.step = step
+        self.label = label
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            label()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 0) {
+                button("minus", enabled: value > range.lowerBound) { value = max(value - step, range.lowerBound) }
+                Rectangle().fill(Color.primary.opacity(0.12)).frame(width: 1, height: 18)
+                button("plus", enabled: value < range.upperBound) { value = min(value + step, range.upperBound) }
+            }
+            .background(Color(.tertiarySystemFill), in: Capsule())
+        }
+        .sensoryFeedback(.selection, trigger: value)
+    }
+
+    private func button(_ icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.body.weight(.semibold))
+                .frame(width: 46, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
+        .foregroundStyle(enabled ? Color.primary : Color.secondary.opacity(0.4))
+        .disabled(!enabled)
+    }
+}
+
+extension AppStepper where Label == Text {
+    init(_ title: String, value: Binding<Int>, in range: ClosedRange<Int>, step: Int = 1) {
+        self.init(value: value, in: range, step: step) { Text(title) }
+    }
+}
