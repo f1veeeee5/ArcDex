@@ -210,6 +210,8 @@ struct DamageCalcView: View {
                 } label: {
                     CompactMenuLabel(text: list[min(set, list.count - 1)].title)
                 }
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
             }
         }
         .padding(14)
@@ -229,6 +231,8 @@ struct DamageCalcView: View {
                 } label: {
                     CompactMenuLabel(text: options.weather.title)
                 }
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
             }
             Divider()
             Toggle(isOn: $options.critical) { Label(L("Volltreffer", "Critical hit"), systemImage: "scope") }
@@ -399,7 +403,7 @@ struct CompactMenuLabel: View {
             Image(systemName: "chevron.up.chevron.down").font(.caption.weight(.semibold))
         }
         .font(.subheadline.weight(.medium))
-        .foregroundStyle(.tint)
+        .foregroundStyle(Color.accentColor)
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(Color.accentColor.opacity(0.12), in: Capsule())
         .frame(maxWidth: 200, alignment: .trailing)
