@@ -356,38 +356,23 @@ struct MarqueeText: View {
     private var overflow: CGFloat { max(textWidth - boxWidth, 0) }
 
     var body: some View {
-        // invisible copy: gives the line its height, may be narrower than the text
+        // invisible copy: gives the line its height and takes the available width
         Text(text)
             .font(font)
             .lineLimit(1)
             .hidden()
-            .overlay(alignment: .leading) {
-                GeometryReader { geo in
-                    let width = geo.size.width
-                    Text(text)
-                        .font(font)
-                        .foregroundStyle(color)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
-                        .offset(x: shift ? -overflow : 0)
-                        .frame(width: width, alignment: .leading)
-                        .onAppear { boxWidth = width }
-                        .onChange(of: width) { _, w in boxWidth = w }
-                }
-            }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
-            // soft edges while it moves
-            .mask {
-                HStack(spacing: 0) {
-                    LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: overflow > 0 && shift ? 8 : 0)
-                    Color.black
-                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: overflow > 0 && !shift ? 8 : 0)
-                }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { boxWidth = $0 }
+            .overlay(alignment: .leading) {
+                Text(text)
+                    .font(font)
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
+                    .offset(x: shift ? -overflow : 0)
             }
+            .clipped()
             .task(id: overflow) {
                 shift = false
                 guard overflow > 1 else { return }

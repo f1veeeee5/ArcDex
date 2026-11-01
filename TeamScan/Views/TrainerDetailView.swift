@@ -336,36 +336,64 @@ struct MatchupResultView: View {
         switch v { case .good: return .green; case .close: return .orange; case .hard: return .red }
     }
 
+    /// Opponent on top, below in a tinted box the team member that answers it and with which move.
     private func answerRow(_ a: Matchup.Answer) -> some View {
         let dex = Dex.shared
         let gradeColor: Color = a.grade == .safe ? .green : a.grade == .even ? .orange : .red
-        return HStack(spacing: 10) {
-            PokemonSprite(pokemonId: a.opponent.p).frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                MarqueeText(text: dex.pokemon(a.opponent.p)?.name ?? "?", font: .subheadline.weight(.semibold), color: .primary)
-                Text("Lv. \(a.opponent.l)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+        let gradeText: String = a.grade == .safe ? L("sicher", "safe") : a.grade == .even ? L("knapp", "close") : L("keine Antwort", "no answer")
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                PokemonSprite(pokemonId: a.opponent.p).frame(width: 50, height: 50)
+                VStack(alignment: .leading, spacing: 1) {
+                    MarqueeText(text: dex.pokemon(a.opponent.p)?.name ?? "?", font: .headline, color: .primary)
+                    Text("Lv. \(a.opponent.l)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                Text(gradeText)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(gradeColor)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(gradeColor.opacity(0.15), in: Capsule())
             }
-            .frame(width: 84, alignment: .leading)
-            Image(systemName: "arrow.left").font(.caption.weight(.bold)).foregroundStyle(gradeColor)
             if let m = a.member {
-                PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny).frame(width: 40, height: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    MarqueeText(text: m.displayName, font: .subheadline.weight(.semibold), color: .primary)
-                    if let id = a.moveId, let move = dex.move(id) {
-                        HStack(spacing: 4) {
-                            Circle().fill(TypeColor.color(move.t)).frame(width: 6, height: 6)
-                            MarqueeText(text: L("\(move.name) · ~\(Int(min(a.damage, 9.99) * 100)) % pro Treffer",
-                                                "\(move.name) · ~\(Int(min(a.damage, 9.99) * 100)) % per hit"))
+                HStack(spacing: 10) {
+                    PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny)
+                        .frame(width: 44, height: 44)
+                    VStack(alignment: .leading, spacing: 4) {
+                        MarqueeText(text: m.displayName, font: .subheadline.weight(.semibold), color: .primary)
+                        if let id = a.moveId, let move = dex.move(id) {
+                            HStack(spacing: 8) {
+                                HStack(spacing: 5) {
+                                    Circle().fill(TypeColor.color(move.t)).frame(width: 8, height: 8)
+                                    Text(move.name).font(.subheadline.weight(.medium)).lineLimit(1).minimumScaleFactor(0.75)
+                                }
+                                .padding(.horizontal, 9).padding(.vertical, 4)
+                                .background(TypeColor.color(move.t).opacity(0.16), in: Capsule())
+                                Text(L("~\(Int(min(a.damage, 9.99) * 100)) % / Treffer", "~\(Int(min(a.damage, 9.99) * 100)) % / hit"))
+                                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .layoutPriority(1)
+                            }
+                        } else {
+                            Text(L("keine passende Attacke", "no fitting move")).font(.subheadline).foregroundStyle(.secondary)
                         }
-                    } else {
-                        MarqueeText(text: L("keine passende Attacke", "no fitting move"))
                     }
+                    Spacer(minLength: 0)
+                }
+                .padding(10)
+                .background(gradeColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.leading, 26)
+                .overlay(alignment: .topLeading) {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(gradeColor)
+                        .padding(.leading, 6)
+                        .padding(.top, 2)
                 }
             }
-            Spacer(minLength: 0)
-            Circle().fill(gradeColor).frame(width: 10, height: 10)
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
+        .padding(14)
     }
 
     private func icon(_ k: Matchup.Tip.Kind) -> String {

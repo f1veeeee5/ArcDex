@@ -222,9 +222,15 @@ struct TrainerCard: View {
     var body: some View {
         let color = trainer.type.map { TypeColor.color($0) } ?? Color.orange
         HStack(alignment: .center, spacing: 12) {
-        TrainerSprite(avatar: trainer.avatar)
-            .frame(width: 64, height: 64)
-            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // trainer standing on a small platform in the type colour (no box)
+        ZStack(alignment: .bottom) {
+            BattlePlatform(colors: [color])
+                .frame(width: 62, height: 18)
+            TrainerSprite(avatar: trainer.avatar)
+                .frame(width: 68, height: 68)
+                .padding(.bottom, 6)
+        }
+        .frame(width: 70, height: 78)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(trainer.name.text).font(.headline).lineLimit(1)
