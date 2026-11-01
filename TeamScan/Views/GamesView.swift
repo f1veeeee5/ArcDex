@@ -225,8 +225,10 @@ struct TrainerCard: View {
         // trainer standing on a small platform in the type colour (no box)
         // the sprites have a wide empty border – so a narrow platform under the feet
         ZStack(alignment: .bottom) {
-            BattlePlatform(colors: [color])
-                .frame(width: 40, height: 11)
+            // small ground shadow in the type colour (the full platform glows too wide in a list)
+            Ellipse()
+                .fill(RadialGradient(colors: [color.opacity(0.55), color.opacity(0)], center: .center, startRadius: 0, endRadius: 22))
+                .frame(width: 44, height: 10)
                 .padding(.bottom, 4)
             TrainerSprite(avatar: trainer.avatar)
                 .frame(width: 76, height: 76)
