@@ -238,8 +238,24 @@ struct CardBackground: ViewModifier {
     }
 }
 
+/// Card with a coloured edge on the left: a coloured card lies behind the grey one and shows
+/// as a rounded crescent (follows the corners).
+struct AccentCardBackground: ViewModifier {
+    let colors: [Color]
+    var width: CGFloat = 7
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        content
+            .background(Color(.secondarySystemGroupedBackground), in: shape)
+            .padding(.leading, width)
+            .background(LinearGradient(colors: colors.count > 1 ? colors : colors + colors, startPoint: .top, endPoint: .bottom), in: shape)
+    }
+}
+
 extension View {
     func card() -> some View { modifier(CardBackground()) }
+    func accentCard(_ colors: [Color], width: CGFloat = 7) -> some View { modifier(AccentCardBackground(colors: colors, width: width)) }
 }
 
 

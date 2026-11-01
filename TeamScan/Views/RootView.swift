@@ -237,10 +237,7 @@ struct SavegameCard: View {
             }
         }
         .padding(16)
-        .card()
-        .overlay(alignment: .leading) {
-            Capsule().fill(game.gradient).frame(width: 4).padding(.vertical, 18)
-        }
+        .accentCard(game.colors)
     }
 }
 
