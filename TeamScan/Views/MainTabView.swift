@@ -14,6 +14,9 @@ struct MainTabView: View {
             Tab("Pokédex", systemImage: "book.closed.fill", value: 1) {
                 PokedexView()
             }
+            Tab(L("Spiele", "Games"), systemImage: "map.fill", value: 3) {
+                GamesView()
+            }
             Tab(L("Einstellungen", "Settings"), systemImage: "gearshape.fill", value: 2) {
                 SettingsView(showsDone: false)
             }
