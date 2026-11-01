@@ -66,9 +66,9 @@ struct PokemonDetailView: View {
                     BattlePlatform(colors: colors)
                         .frame(width: 210, height: 58)
                         .padding(.bottom, 16)
-                    AnimatedPokemonSprite(pokemonId: p.id, shiny: shiny)
+                    AnimatedPokemonSprite(pokemonId: p.id, shiny: shiny, grounded: true)
                         .frame(width: 190, height: 190)
-                        .padding(.bottom, 34)
+                        .padding(.bottom, 44)
                         .id("\(p.id)-\(shiny)")
                         .transition(.scale.combined(with: .opacity))
                 }
