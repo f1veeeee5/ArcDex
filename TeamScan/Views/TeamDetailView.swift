@@ -93,6 +93,11 @@ struct TeamDetailView: View {
 
                 SectionHeader(title: L("Tipps", "Tips"), icon: "checklist")
                 TipsView(tips: analysis.tips)
+
+                if !members.isEmpty {
+                    SectionHeader(title: L("Spielplan", "Game plan"), icon: "sparkles")
+                    GamePlanView(team: team)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 40)

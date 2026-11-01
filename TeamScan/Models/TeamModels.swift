@@ -16,6 +16,8 @@ final class Team {
     var savegame: Savegame?
     /// Nuzlocke / Soul Link: 1 or 2 = the team of that player, 0 = normal team
     var player: Int = 0
+    /// AI game plan (JSON of `GamePlan`)
+    var gamePlanData: Data?
 
     init(name: String, game: Game) {
         self.name = name

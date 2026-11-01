@@ -81,6 +81,8 @@ struct SettingsView: View {
                            "Shows ready-made sets (playthrough and competitive) in the Pokémon editor that you can use with one tap."))
                 }
 
+                AISettingsSection()
+
                 Section {
                     ShareLink(item: BackupFileShare(data: Backup.data(context: context), name: Backup.fileName),
                               preview: SharePreview(L("ArcDex-Backup", "ArcDex backup"))) {
