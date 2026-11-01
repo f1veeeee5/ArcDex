@@ -453,6 +453,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = ArcDex;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ArcDex nimmt beim Fang-Beleg-Video auch den Ton auf. / ArcDex also records sound for the catch proof video.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -490,6 +491,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = ArcDex;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TeamScan nutzt die Kamera, um dein Pokémon-Team und deine Attacken abzufotografieren. / TeamScan uses the camera to capture your Pokémon team and moves.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ArcDex nimmt beim Fang-Beleg-Video auch den Ton auf. / ArcDex also records sound for the catch proof video.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

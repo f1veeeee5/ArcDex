@@ -28,6 +28,7 @@ struct HuntView: View {
                 hero
                 if hunt.isFound {
                     foundBanner
+                    ShinyProofCard(hunt: hunt)
                 } else {
                     counter
                 }

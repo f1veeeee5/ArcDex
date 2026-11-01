@@ -192,6 +192,10 @@ final class ShinyHunt {
     var phasesData: Data = Data()
     var notes: String = ""
     var savegame: Savegame?
+    /// Catch proof: photo or video taken with the app camera within 24 h after the find (file name in Documents/ShinyProof)
+    var proofFile: String?
+    var proofIsVideo: Bool = false
+    var proofTakenAt: Date?
 
     init(pokemonId: Int, method: HuntMethod) {
         self.pokemonId = pokemonId
