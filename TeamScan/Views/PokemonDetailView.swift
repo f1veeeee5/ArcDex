@@ -62,14 +62,17 @@ struct PokemonDetailView: View {
         let colors = p.types(gen: game.gen).map { TypeColor.color($0) }
         return VStack(spacing: 12) {
             ZStack(alignment: .topTrailing) {
-                Circle()
-                    .fill(RadialGradient(colors: colors.map { $0.opacity(0.45) } + [.clear], center: .center, startRadius: 10, endRadius: 140))
-                    .frame(width: 240, height: 240)
-                AnimatedPokemonSprite(pokemonId: p.id, shiny: shiny)
-                    .frame(width: 190, height: 190)
-                    .padding(25)
-                    .id("\(p.id)-\(shiny)")
-                    .transition(.scale.combined(with: .opacity))
+                ZStack(alignment: .bottom) {
+                    BattlePlatform(colors: colors)
+                        .frame(width: 210, height: 58)
+                        .padding(.bottom, 16)
+                    AnimatedPokemonSprite(pokemonId: p.id, shiny: shiny)
+                        .frame(width: 190, height: 190)
+                        .padding(.bottom, 34)
+                        .id("\(p.id)-\(shiny)")
+                        .transition(.scale.combined(with: .opacity))
+                }
+                .frame(width: 240, height: 240)
                 Button {
                     withAnimation(.spring) { shiny.toggle() }
                 } label: {
@@ -669,5 +672,37 @@ struct FlowLayout: Layout {
             x += s.width + spacing
             rowHeight = max(rowHeight, s.height)
         }
+    }
+}
+
+
+/// Flat oval like the battle platforms in the games, tinted in the type colours.
+struct BattlePlatform: View {
+    let colors: [Color]
+
+    var body: some View {
+        let tint = colors.isEmpty ? [Color.gray] : colors
+        ZStack {
+            // body of the platform
+            Ellipse()
+                .fill(LinearGradient(colors: tint.map { $0.opacity(0.55) }, startPoint: .leading, endPoint: .trailing))
+            // lighter top surface
+            Ellipse()
+                .fill(LinearGradient(colors: tint.map { $0.opacity(0.35) } + [Color.white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .padding(.horizontal, 10)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
+            Ellipse()
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 1.5)
+                .padding(.horizontal, 10)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
+            // shadow under the Pokémon
+            Ellipse()
+                .fill(RadialGradient(colors: [.black.opacity(0.35), .clear], center: .center, startRadius: 0, endRadius: 50))
+                .frame(width: 110, height: 22)
+                .offset(y: -4)
+        }
+        .shadow(color: (tint.first ?? .gray).opacity(0.35), radius: 14, y: 6)
     }
 }
