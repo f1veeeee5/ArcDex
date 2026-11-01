@@ -45,6 +45,12 @@ enum SpriteStyle: String, CaseIterable, Identifiable {
 enum SpriteURLs {
     private static let base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/"
 
+    /// Official type icons: Champions (symbol only) or the pixel label of Black 2 / White 2.
+    static func typeIcon(_ id: Int, pixel: Bool) -> [URL] {
+        let path = pixel ? "types/generation-v/black-2-white-2/\(id).png" : "types/generation-ix/champions/small/\(id).png"
+        return [URL(string: base + path)].compactMap { $0 }
+    }
+
     static func pokemon(_ id: Int, shiny: Bool, style: SpriteStyle) -> [URL] {
         let keys = Dex.shared.pokemon(id)?.spriteKeys ?? [String(id)]
         return keys.flatMap { pokemon(key: $0, shiny: shiny, style: style) }

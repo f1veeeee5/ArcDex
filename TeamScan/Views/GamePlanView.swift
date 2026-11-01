@@ -127,7 +127,7 @@ struct GamePlanView: View {
             ForEach(list) { entry in
                 let a = resolve(entry)
                 HStack(alignment: .top, spacing: 10) {
-                    ThreatSymbol(typeId: a.typeId).frame(width: 36, height: 36)
+                    ThreatSymbol(typeId: a.typeId).frame(width: 40, height: 36, alignment: .top)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(a.threat).font(.body.weight(.semibold))
                         if let m = a.member {
@@ -323,40 +323,23 @@ struct BulletList: View {
 }
 
 
-/// Round symbol for a type (in its type colour); without a type a shield.
+/// Official type icon: in 3D the round-cornered icon of Pokémon Champions, in Pixel the Gen-5 label.
+/// Threats that are no type (e.g. Trick Room) get a shield.
 struct ThreatSymbol: View {
     let typeId: Int?
-
-    private var symbol: String {
-        switch typeId {
-        case T.normal: return "circle.fill"
-        case T.fighting: return "figure.boxing"
-        case T.flying: return "wind"
-        case T.poison: return "drop.triangle.fill"
-        case T.ground: return "mountain.2.fill"
-        case T.rock: return "diamond.fill"
-        case T.bug: return "ladybug.fill"
-        case T.ghost: return "theatermasks.fill"
-        case T.steel: return "shield.lefthalf.filled"
-        case T.fire: return "flame.fill"
-        case T.water: return "drop.fill"
-        case T.grass: return "leaf.fill"
-        case T.electric: return "bolt.fill"
-        case T.psychic: return "eye.fill"
-        case T.ice: return "snowflake"
-        case T.dragon: return "lizard.fill"
-        case T.dark: return "moon.fill"
-        case T.fairy: return "sparkles"
-        default: return "exclamationmark.shield.fill"
-        }
-    }
+    @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
 
     var body: some View {
-        let color = typeId.map { TypeColor.color($0) } ?? .red
-        Image(systemName: symbol)
-            .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(color.gradient, in: Circle())
+        if let typeId, (1...18).contains(typeId) {
+            let pixel = SpriteStyle(rawValue: styleRaw) == .pixel
+            RemoteImage(urls: SpriteURLs.typeIcon(typeId, pixel: pixel), pixelated: pixel, placeholder: "circle.fill")
+                .clipShape(RoundedRectangle(cornerRadius: pixel ? 0 : 9, style: .continuous))
+        } else {
+            Image(systemName: "exclamationmark.shield.fill")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.red.gradient, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
     }
 }
