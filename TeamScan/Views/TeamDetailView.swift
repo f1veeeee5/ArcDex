@@ -205,8 +205,9 @@ struct TeamDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerRow
-            if game.isChampions {
-                Picker(L("Format", "Format"), selection: Binding(get: { team.format }, set: { team.format = $0; team.touch() })) {
+            // double battles exist since Generation 3
+            if game.gen >= 3 {
+                Picker(L("Kampfart", "Battle format"), selection: Binding(get: { team.battleFormat }, set: { team.battleFormat = $0; team.touch() })) {
                     ForEach(BattleFormat.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)

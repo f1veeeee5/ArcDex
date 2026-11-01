@@ -35,7 +35,7 @@ extension Team {
         let parts = sortedMembers.map { m in
             "\(m.battleForm(in: game)?.id ?? m.pokemonId):\(m.moveIds.map(String.init).joined(separator: ",")):\(m.itemId ?? 0):\(m.abilityId ?? 0):\(m.natureId ?? 0):\(m.teraTypeId ?? 0):\(m.level)"
         }
-        return game.rawValue + "|" + formatRaw + "|" + parts.joined(separator: ";")
+        return game.rawValue + "|" + battleFormat.rawValue + "|" + parts.joined(separator: ";")
     }
 }
 
@@ -139,13 +139,14 @@ enum GamePlanner {
     @MainActor
     static func makePlan(for team: Team) async throws -> GamePlan {
         let facts = TeamFacts.text(for: team)
+        let doubles = team.battleFormat == .doubles
         var plan: GamePlan
         switch engine {
         case .claude(let model):
-            plan = try await claude(facts: facts, model: model)
+            plan = try await claude(facts: facts, model: model, doubles: doubles)
             plan.engine = model.rawValue
         case .apple:
-            plan = try await apple(facts: facts)
+            plan = try await apple(facts: facts, doubles: doubles)
             plan.engine = "apple"
         case .none(let message):
             throw PlanError.message(message)
@@ -157,12 +158,20 @@ enum GamePlanner {
 
     private static var languageName: String { Lang.current == .de ? "German" : "English" }
 
-    private static var instructions: String {
-        """
-        You are an experienced Pokémon coach. Write a short, practical game plan for the player's team in \(languageName).
+    private static func instructions(doubles: Bool) -> String {
+        let format = doubles
+            ? """
+              This is a DOUBLE BATTLE team: two Pokémon on each side at the same time. Name the lead PAIR, how the two support each other               (e.g. Protect, Fake Out, Tailwind, Trick Room, redirection, spread moves that hit both foes, partners that are immune to a spread move),               and which pair to bring in later.
+              """
+            : """
+              This is a SINGLE BATTLE team: one Pokémon on each side. Name the single lead, when to switch, and the order in which to bring the others.
+              """
+        return """
+        You are an experienced Pokémon coach. Write a practical, detailed game plan for the player's team in \(languageName).
+        \(format)
         Use ONLY the facts given about the team (Pokémon, types, moves, items, abilities, stats, weaknesses).
         Do not invent moves, items or abilities the team doesn't have. Refer to Pokémon by the names given.
-        Keep every text short: 1–3 sentences. Be concrete (which Pokémon, which move, when to switch).
+        Be concrete: which Pokémon, which move, in which situation, when to switch. Write full sentences, 3–5 sentences per section.
         """
     }
 
@@ -170,13 +179,13 @@ enum GamePlanner {
 
     @Generable
     nonisolated struct AppleDraft {
-        @Guide(description: "One or two sentences: the overall style of the team and how it wins.")
+        @Guide(description: "Three or four sentences: the overall style of the team, its strengths and how it wins.")
         var summary: String
-        @Guide(description: "Which Pokémon should go first (lead) and why, with the moves to use first.")
+        @Guide(description: "Three to five sentences: which Pokémon lead (in doubles: the lead pair) and why, which moves to use in the first turns, and what to do if the opponent counters the lead.")
         var lead: String
-        @Guide(description: "The main win condition: which Pokémon and which moves finish the battle, and when to set it up.")
+        @Guide(description: "Three to five sentences: the main win condition – which Pokémon and moves finish the battle, what has to be removed first, and when to set it up.")
         var winCondition: String
-        @Guide(description: "The biggest threats or weaknesses of the team and how to play around them (which Pokémon to switch in).")
+        @Guide(description: "Three to five sentences: the biggest threats and weaknesses of the team and exactly how to play around them, including which team member to switch in.")
         var threats: String
         @Guide(description: "One entry per team member, in the given order.")
         var roles: [AppleRole]
@@ -186,12 +195,12 @@ enum GamePlanner {
     nonisolated struct AppleRole {
         @Guide(description: "Name of the team member exactly as given in the facts.")
         var pokemon: String
-        @Guide(description: "Its job in the team in one or two sentences.")
+        @Guide(description: "Two or three sentences: its job in the team, its key moves and when to bring it in.")
         var role: String
     }
 
-    private static func apple(facts: String) async throws -> GamePlan {
-        let session = LanguageModelSession(instructions: instructions)
+    private static func apple(facts: String, doubles: Bool) async throws -> GamePlan {
+        let session = LanguageModelSession(instructions: instructions(doubles: doubles))
         let response = try await session.respond(to: "Team facts:\n\(facts)\n\nWrite the game plan.", generating: AppleDraft.self)
         let d = response.content
         return GamePlan(summary: d.summary, lead: d.lead, winCondition: d.winCondition, threats: d.threats,
@@ -208,7 +217,7 @@ enum GamePlanner {
         let roles: [GamePlan.Role]
     }
 
-    private static func claude(facts: String, model: ClaudeModel) async throws -> GamePlan {
+    private static func claude(facts: String, model: ClaudeModel, doubles: Bool) async throws -> GamePlan {
         guard let key = APIKeyStore.key else { throw PlanError.message(L("Kein Claude-Schlüssel eingetragen.", "No Claude key entered.")) }
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
@@ -216,7 +225,7 @@ enum GamePlanner {
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        let system = instructions + """
+        let system = instructions(doubles: doubles) + """
 
         Answer with ONLY a JSON object, no other text, in exactly this shape:
         {"summary": "...", "lead": "...", "winCondition": "...", "threats": "...", "roles": [{"pokemon": "...", "role": "..."}]}
@@ -224,7 +233,7 @@ enum GamePlanner {
         """
         let body: [String: Any] = [
             "model": model.rawValue,
-            "max_tokens": 1500,
+            "max_tokens": 2500,
             "system": system,
             "messages": [["role": "user", "content": "Team facts:\n\(facts)\n\nWrite the game plan."]],
         ]
@@ -268,8 +277,8 @@ enum TeamFacts {
         let analysis = TeamAnalysis(members: members, game: game, format: game.isChampions ? team.format : nil)
         var lines: [String] = []
         lines.append("Game: \(game.title) (Generation \(game.gen)). Battle mechanic: \(game.mechanic).")
-        if game.isChampions { lines.append("Format: \(team.format == .doubles ? "Doubles" : "Singles"), all Pokémon at level 50.") }
-        else { lines.append("Format: in-game / singles.") }
+        let formatName = team.battleFormat == .doubles ? "Double battles" : "Single battles"
+        lines.append("Format: \(formatName)" + (game.isChampions ? ", all Pokémon at level 50." : "."))
         lines.append("")
         lines.append("Team (\(members.count) Pokémon):")
         for (i, m) in members.enumerated() {

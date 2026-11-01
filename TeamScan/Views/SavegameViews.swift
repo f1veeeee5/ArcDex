@@ -220,6 +220,7 @@ struct SavegameDetailView: View {
     private func duplicate(_ team: Team) {
         let copy = newTeam(name: team.name + L(" (Kopie)", " (Copy)"))
         copy.format = team.format
+        copy.formatChosen = team.formatChosen
         for m in team.sortedMembers {
             let n = TeamMember(pokemonId: m.pokemonId, order: m.order, level: m.level)
             context.insert(n)

@@ -366,6 +366,12 @@ struct TeamCard: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7).padding(.vertical, 2)
                             .background(team.game.gradient, in: Capsule())
+                        if team.battleFormat == .doubles {
+                            Text(L("Doppel", "Doubles"))
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(Color(.tertiarySystemFill), in: Capsule())
+                        }
                         Text(team.updatedAt, format: .relative(presentation: .named))
                             .font(.caption).foregroundStyle(.secondary)
                     }

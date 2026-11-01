@@ -18,6 +18,8 @@ final class Team {
     var player: Int = 0
     /// AI game plan (JSON of `GamePlan`)
     var gamePlanData: Data?
+    /// true once the user picked singles/doubles (older teams of other games default to singles)
+    var formatChosen: Bool = false
 
     init(name: String, game: Game) {
         self.name = name
@@ -39,6 +41,12 @@ final class Team {
     }
 
     var isFull: Bool { members.count >= 6 }
+
+    /// Singles or doubles. Champions teams default to doubles, all other teams to singles until changed.
+    var battleFormat: BattleFormat {
+        get { (formatChosen || game.isChampions) ? format : .singles }
+        set { format = newValue; formatChosen = true }
+    }
 
     func touch() { updatedAt = Date() }
 }

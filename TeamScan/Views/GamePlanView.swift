@@ -16,7 +16,7 @@ struct GamePlanView: View {
                     ProgressView()
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L("Spielplan wird geschrieben …", "Writing game plan …")).font(.subheadline.weight(.semibold))
-                        Text(L("mit \(engine.title)", "with \(engine.title)")).font(.caption).foregroundStyle(.secondary)
+                        Text(L("mit \(engine.title) · \(team.battleFormat.title)", "with \(engine.title) · \(team.battleFormat.title)")).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,8 +50,8 @@ struct GamePlanView: View {
                                                 .frame(width: 34, height: 34)
                                         }
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(role.pokemon).font(.subheadline.weight(.semibold))
-                                            Text(role.role).font(.subheadline).foregroundStyle(.secondary)
+                                            Text(role.pokemon).font(.body.weight(.semibold))
+                                            Text(role.role).font(.body).foregroundStyle(.secondary)
                                                 .fixedSize(horizontal: false, vertical: true)
                                         }
                                     }
@@ -153,7 +153,7 @@ struct GamePlanView: View {
                         .foregroundStyle(color)
                         .frame(width: 30, height: 30)
                         .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(title).font(.headline).foregroundStyle(.primary)
                     Spacer()
                     Image(systemName: "chevron.down")
                         .font(.caption.weight(.bold))
@@ -165,7 +165,7 @@ struct GamePlanView: View {
             .buttonStyle(.plain)
             if open.contains(key) {
                 content()
-                    .font(.subheadline)
+                    .font(.body)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 42)
                     .transition(.opacity.combined(with: .move(edge: .top)))
