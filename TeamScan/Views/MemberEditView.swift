@@ -97,15 +97,17 @@ struct MemberEditView: View {
         Section {
             VStack(spacing: 12) {
                 ZStack(alignment: .topTrailing) {
-                    Circle()
-                        .fill(RadialGradient(colors: member.types(in: game).map { TypeColor.color($0).opacity(0.35) } + [.clear],
-                                             center: .center, startRadius: 10, endRadius: 120))
-                        .frame(width: 200, height: 200)
-                    AnimatedPokemonSprite(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, shiny: member.shiny)
-                        .frame(width: 170, height: 170)
-                        .padding(15)
-                        .id("\(member.pokemonId)-\(member.megaFormId ?? 0)-\(member.gigantamax)-\(member.shiny)")
-                        .transition(.scale.combined(with: .opacity))
+                    ZStack(alignment: .bottom) {
+                        BattlePlatform(colors: member.types(in: game).map { TypeColor.color($0) })
+                            .frame(width: 180, height: 50)
+                            .padding(.bottom, 14)
+                        // no insert transition here: inside a List it sometimes left the sprite invisible
+                        AnimatedPokemonSprite(pokemonId: member.battleForm(in: game)?.id ?? member.pokemonId, shiny: member.shiny, grounded: true)
+                            .frame(width: 170, height: 170)
+                            .padding(.bottom, 38)
+                            .id("\(member.pokemonId)-\(member.megaFormId ?? 0)-\(member.gigantamax)-\(member.shiny)")
+                    }
+                    .frame(width: 200, height: 222)
                 }
                 .frame(maxWidth: .infinity)
                 .onTapGesture { picker = .species }

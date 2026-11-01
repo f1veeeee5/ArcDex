@@ -76,7 +76,7 @@ final class ImageCache {
 
     private let memory = NSCache<NSURL, UIImage>()
     private var failed = Set<URL>()
-    private var running: [URL: Task<UIImage?, Never>] = [:]
+    private var running: [URL: Task<(UIImage?, Bool), Never>] = [:]
     private let directory: URL
 
     private init() {
@@ -105,18 +105,20 @@ final class ImageCache {
             memory.setObject(img, forKey: url as NSURL)
             return img
         }
-        if let task = running[url] { return await task.value }
-        let task = Task<UIImage?, Never> {
-            guard let (data, response) = try? await URLSession.shared.data(from: url),
-                  (response as? HTTPURLResponse)?.statusCode == 200,
-                  let img = UIImage(data: data) else { return nil }
+        if let task = running[url] { return await task.value.0 }
+        let task = Task<(UIImage?, Bool), Never> {
+            guard let (data, response) = try? await URLSession.shared.data(from: url) else { return (nil, false) }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            guard status == 200, let img = UIImage(data: data) else { return (nil, status == 404) }
             try? data.write(to: path)
-            return img
+            return (img, false)
         }
         running[url] = task
-        let img = await task.value
+        let (img, missing) = await task.value
         running[url] = nil
-        if let img { memory.setObject(img, forKey: url as NSURL) } else { failed.insert(url) }
+        if let img { memory.setObject(img, forKey: url as NSURL) }
+        // only remember real 404s – a network hiccup must not hide the sprite for the rest of the session
+        else if missing { failed.insert(url) }
         return img
     }
 }
