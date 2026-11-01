@@ -8,7 +8,9 @@ struct GuideTrainerRoute: Hashable {
 
 /// "Games" tab: starters, legendaries, the way through the region and the important trainers of a game.
 struct GamesView: View {
-    @Query(sort: \Savegame.updatedAt, order: .reverse) private var saves: [Savegame]
+    @Query(sort: \Savegame.updatedAt, order: .reverse) private var everySave: [Savegame]
+    @AppStorage(ProfileStore.key) private var activeProfile = ""
+    private var saves: [Savegame] { everySave.filter { $0.profileID?.uuidString == activeProfile } }
     @AppStorage("guideGame") private var gameRaw = ""
     @State private var path = NavigationPath()
     @State private var routeOpen = false

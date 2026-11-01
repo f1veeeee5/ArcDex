@@ -5,7 +5,10 @@ import UniformTypeIdentifiers
 /// Start page: all save files (each with its teams and shiny hunts).
 struct RootView: View {
     @Environment(\.modelContext) private var context
-    @Query(sort: \Savegame.updatedAt, order: .reverse) private var allSaves: [Savegame]
+    @Query(sort: \Savegame.updatedAt, order: .reverse) private var everySave: [Savegame]
+    @AppStorage(ProfileStore.key) private var activeProfile = ""
+    /// save files of the active profile
+    private var allSaves: [Savegame] { everySave.filter { $0.profileID?.uuidString == activeProfile } }
     @Query(filter: #Predicate<ShinyHunt> { $0.foundAt == nil }, sort: \ShinyHunt.updatedAt, order: .reverse)
     private var activeHunts: [ShinyHunt]
     /// "all" or a Game raw value
@@ -24,7 +27,7 @@ struct RootView: View {
         return allSaves.filter { $0.gameRaw == filter.rawValue }
     }
     private var hunts: [ShinyHunt] {
-        activeHunts.filter { h in h.savegame != nil && (filter == nil || h.savegame?.gameRaw == filter?.rawValue) }
+        activeHunts.filter { h in h.savegame?.profileID?.uuidString == activeProfile && (filter == nil || h.savegame?.gameRaw == filter?.rawValue) }
     }
 
     var body: some View {

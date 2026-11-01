@@ -7,6 +7,7 @@ struct TrainerDetailView: View {
     let trainerId: String
 
     @Query(sort: \Team.updatedAt, order: .reverse) private var allTeams: [Team]
+    @AppStorage(ProfileStore.key) private var activeProfile = ""
     @State private var variant = 0
     @State private var teamId: UUID?
     @State private var calc: CalcRequest?
@@ -22,7 +23,7 @@ struct TrainerDetailView: View {
 
     /// Only teams of this game.
     private var teams: [Team] {
-        allTeams.filter { $0.game == game && !$0.members.isEmpty }
+        allTeams.filter { $0.game == game && !$0.members.isEmpty && $0.savegame?.profileID?.uuidString == activeProfile }
     }
 
     private var selectedTeam: Team? {

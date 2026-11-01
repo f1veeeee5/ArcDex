@@ -8,7 +8,9 @@ struct TeamDetailView: View {
     @Binding var path: NavigationPath
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Savegame.updatedAt, order: .reverse) private var saves: [Savegame]
+    @Query(sort: \Savegame.updatedAt, order: .reverse) private var everySave: [Savegame]
+    @AppStorage(ProfileStore.key) private var activeProfile = ""
+    private var saves: [Savegame] { everySave.filter { $0.profileID?.uuidString == activeProfile } }
     @AppStorage("spriteStyle") private var styleRaw = SpriteStyle.home.rawValue
     @AppStorage("defaultLevel") private var defaultLevel = 50
 

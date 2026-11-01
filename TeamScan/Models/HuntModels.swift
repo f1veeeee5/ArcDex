@@ -94,11 +94,15 @@ final class Savegame {
     var player2: String = ""
     @Relationship(deleteRule: .cascade, inverse: \NuzlockeLink.savegame)
     var links: [NuzlockeLink] = []
+    /// The local profile this save file belongs to (nil only for data of older app versions, fixed on launch).
+    var profileID: UUID?
 
     init(game: Game, platform: Platform? = nil, name: String = "") {
         self.gameRaw = game.rawValue
         self.platformRaw = (platform ?? Platform.defaultPlatform(for: game)).rawValue
         self.name = name
+        // new save files belong to the profile that is active right now
+        self.profileID = ProfileStore.activeID
     }
 
     var game: Game {

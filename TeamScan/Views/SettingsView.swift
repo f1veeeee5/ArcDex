@@ -17,8 +17,18 @@ struct SettingsView: View {
     @AppStorage("showMovesetTips") private var showMovesetTips = true
     @AppStorage("appearance") private var appearance = Appearance.system.rawValue
 
+    /// true when pushed inside another navigation stack (from the profile tab)
+    var embedded = false
+
     var body: some View {
-        NavigationStack {
+        if embedded {
+            content
+        } else {
+            NavigationStack { content }
+        }
+    }
+
+    private var content: some View {
             Form {
                 Section {
                     Picker(L("Sprache", "Language"), selection: $language) {
@@ -124,13 +134,12 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) {}
             }
             .navigationTitle(L("Einstellungen", "Settings"))
-            .navigationBarTitleDisplayMode(showsDone ? .inline : .large)
+            .navigationBarTitleDisplayMode(showsDone || embedded ? .inline : .large)
             .toolbar {
                 if showsDone {
                     ToolbarItem(placement: .confirmationAction) { Button(L("Fertig", "Done")) { dismiss() } }
                 }
             }
-        }
     }
 }
 

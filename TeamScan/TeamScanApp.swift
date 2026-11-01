@@ -10,6 +10,9 @@ struct TeamScanApp: App {
     init() {
         _ = Dex.shared
         HuntActivityManager.setUp()
+        // make sure a profile exists and old save files belong to it – before any list is shown
+        SavegameMigration.run(AppData.container.mainContext)
+        ProfileStore.migrate(AppData.container.mainContext)
     }
 
     var body: some Scene {
