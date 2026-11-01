@@ -142,10 +142,7 @@ struct TipsView: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .card()
-                .overlay(alignment: .leading) {
-                    Capsule().fill(color(tip.level).gradient).frame(width: 4).padding(.vertical, 14)
-                }
+                .accentCard([color(tip.level)])
             }
         }
     }

@@ -403,10 +403,7 @@ struct TeamCard: View {
             }
         }
         .padding(16)
-        .card()
-        .overlay(alignment: .leading) {
-            Capsule().fill(team.game.gradient).frame(width: 4).padding(.vertical, 18)
-        }
+        .accentCard(team.game.colors)
     }
 }
 
