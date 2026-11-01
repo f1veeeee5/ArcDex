@@ -17,7 +17,8 @@ struct MainTabView: View {
             Tab(L("Spiele", "Games"), systemImage: "map.fill", value: 3) {
                 GamesView()
             }
-            Tab(L("Profil", "Profile"), systemImage: "person.crop.circle.fill", value: 2) {
+            // the "search" role puts the tab in its own bubble on the right side of the tab bar
+            Tab(L("Profil", "Profile"), systemImage: "person.crop.circle.fill", value: 2, role: .search) {
                 ProfileView()
             }
         }
