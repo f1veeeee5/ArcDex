@@ -32,13 +32,13 @@ struct GamePlanView: View {
                         .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 VStack(spacing: 0) {
-                    section("summary", L("Überblick", "Overview"), icon: "text.alignleft", color: .indigo) { Text(plan.summary) }
+                    section("summary", L("Überblick", "Overview"), icon: "text.alignleft", color: .indigo) { BulletList(points: plan.summary, color: .indigo) }
                     Divider().padding(.leading, 52)
-                    section("lead", L("Lead – wer startet", "Lead – who starts"), icon: "flag.fill", color: .green) { Text(plan.lead) }
+                    section("lead", L("Lead – wer startet", "Lead – who starts"), icon: "flag.fill", color: .green) { BulletList(points: plan.lead, color: .green) }
                     Divider().padding(.leading, 52)
-                    section("win", L("Siegbedingung", "Win condition"), icon: "trophy.fill", color: .yellow) { Text(plan.winCondition) }
+                    section("win", L("Siegbedingung", "Win condition"), icon: "trophy.fill", color: .yellow) { BulletList(points: plan.winCondition, color: .yellow) }
                     Divider().padding(.leading, 52)
-                    section("threats", L("Gefahren & Konter", "Threats & answers"), icon: "exclamationmark.shield.fill", color: .red) { Text(plan.threats) }
+                    section("threats", L("Gefahren & Konter", "Threats & answers"), icon: "exclamationmark.shield.fill", color: .red) { BulletList(points: plan.threats, color: .red) }
                     if !plan.roles.isEmpty {
                         Divider().padding(.leading, 52)
                         section("roles", L("Rollen", "Roles"), icon: "person.3.fill", color: .blue) {
@@ -49,10 +49,9 @@ struct GamePlanView: View {
                                             PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny)
                                                 .frame(width: 34, height: 34)
                                         }
-                                        VStack(alignment: .leading, spacing: 2) {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text(role.pokemon).font(.body.weight(.semibold))
-                                            Text(role.role).font(.body).foregroundStyle(.secondary)
-                                                .fixedSize(horizontal: false, vertical: true)
+                                            BulletList(points: role.points, color: .blue)
                                         }
                                     }
                                 }
@@ -221,6 +220,25 @@ struct AISettingsSection: View {
         } footer: {
             Text(L("Ohne Schlüssel schreibt Apple Intelligence die Pläne – kostenlos und direkt auf dem iPhone. Mit einem eigenen Claude-Schlüssel (Claude Console, separat vom Claude-Abo) werden die Pläne genauer; jeder Plan kostet dann einen Bruchteil eines Cents bis ca. 1 Cent. Der Schlüssel liegt im Schlüsselbund des iPhones.",
                    "Without a key Apple Intelligence writes the plans – free and on the iPhone. With your own Claude key (Claude Console, separate from the Claude subscription) the plans are more precise; each plan then costs a fraction of a cent up to about 1 cent. The key is kept in the iPhone's keychain."))
+        }
+    }
+}
+
+
+/// Short bullet points; **bold** (Markdown) for Pokémon and moves.
+struct BulletList: View {
+    let points: [String]
+    var color: Color = .accentColor
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(points.enumerated()), id: \.offset) { _, point in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Circle().fill(color).frame(width: 6, height: 6).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                    Text((try? AttributedString(markdown: point)) ?? AttributedString(point))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 }
