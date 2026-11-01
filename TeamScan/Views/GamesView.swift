@@ -12,6 +12,7 @@ struct GamesView: View {
     @AppStorage("guideGame") private var gameRaw = ""
     @State private var path = NavigationPath()
     @State private var routeOpen = false
+    @State private var showPicker = false
 
     private var game: Game {
         Game(rawValue: gameRaw) ?? saves.first?.game ?? .swsh
@@ -66,16 +67,11 @@ struct GamesView: View {
     // MARK: Sections
 
     private var gameHeader: some View {
-        Menu {
-            Picker(selection: Binding(get: { game.rawValue }, set: { gameRaw = $0 })) {
-                GameMenuItems(games: Game.allCases.filter { !$0.isChampions })
-            } label: { EmptyView() }
-            .pickerStyle(.inline)
-        } label: {
+        Button { showPicker = true } label: {
             GameCoverCard(game: game)
                 .frame(height: 130)
                 .overlay(alignment: .topTrailing) {
-                    Image(systemName: "chevron.up.chevron.down")
+                    Image(systemName: "square.stack.3d.up.fill")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.white)
                         .padding(8)
@@ -84,6 +80,11 @@ struct GamesView: View {
                 }
         }
         .buttonStyle(.plain)
+        .fullScreenCover(isPresented: $showPicker) {
+            GameWheelPicker(selected: game) { picked in
+                gameRaw = picked.rawValue
+            }
+        }
     }
 
     private var comingSoon: some View {
@@ -101,29 +102,19 @@ struct GamesView: View {
         Label(title, systemImage: icon).font(.title3.weight(.bold))
     }
 
+    /// Pokémon standing on small platforms, spread evenly over the width.
     private func pokemonRow(_ title: String, icon: String, ids: [(Int, String?)]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             sectionTitle(title, icon: icon)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(Array(ids.enumerated()), id: \.offset) { _, item in
-                        NavigationLink(value: DexRoute(pokemonId: item.0, game: game)) {
-                            VStack(spacing: 4) {
-                                PokemonSprite(pokemonId: item.0).frame(width: 72, height: 72)
-                                Text(Dex.shared.pokemon(item.0)?.name ?? "?").font(.caption.weight(.semibold)).lineLimit(1)
-                                if let note = item.1 {
-                                    Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                            }
-                            .frame(width: 100)
-                            .padding(.vertical, 10)
-                            .card()
-                        }
-                        .buttonStyle(.plain)
+            HStack(alignment: .top, spacing: 4) {
+                ForEach(Array(ids.enumerated()), id: \.offset) { _, item in
+                    NavigationLink(value: DexRoute(pokemonId: item.0, game: game)) {
+                        PodiumPokemon(pokemonId: item.0, note: item.1, game: game)
                     }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
                 }
             }
-            .scrollClipDisabled()
         }
     }
 
@@ -230,9 +221,13 @@ struct TrainerCard: View {
 
     var body: some View {
         let color = trainer.type.map { TypeColor.color($0) } ?? Color.orange
-        VStack(alignment: .leading, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
+        TrainerSprite(avatar: trainer.avatar)
+            .frame(width: 64, height: 64)
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text(trainer.name.text).font(.headline)
+                Text(trainer.name.text).font(.headline).lineLimit(1)
                 if let v = trainer.version {
                     Text(Game.versionTitle(v))
                         .font(.caption2.weight(.bold))
@@ -251,14 +246,134 @@ struct TrainerCard: View {
             }
             Label(trainer.location, systemImage: "mappin.and.ellipse")
                 .font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 2) {
+            HStack(spacing: 0) {
                 ForEach(Array((trainer.teams.first?.team ?? []).enumerated()), id: \.offset) { _, p in
-                    PokemonSprite(pokemonId: p.p).frame(width: 40, height: 40)
+                    PokemonSprite(pokemonId: p.p).frame(width: 34, height: 34)
                 }
                 Spacer(minLength: 0)
             }
         }
+        }
         .padding(14)
         .accentCard(trainer.type.map { [TypeColor.color($0)] } ?? [Color.orange, Color.pink])
+    }
+}
+
+
+/// A Pokémon on a small battle platform with its name below.
+struct PodiumPokemon: View {
+    let pokemonId: Int
+    var note: String?
+    let game: Game
+
+    var body: some View {
+        let p = Dex.shared.pokemon(pokemonId)
+        VStack(spacing: 2) {
+            ZStack(alignment: .bottom) {
+                BattlePlatform(colors: (p?.types(gen: game.gen) ?? []).map { TypeColor.color($0) })
+                    .frame(width: 100, height: 30)
+                    .padding(.bottom, 2)
+                AnimatedPokemonSprite(pokemonId: pokemonId, grounded: true)
+                    .frame(width: 86, height: 86)
+                    .padding(.bottom, 16)
+            }
+            .frame(height: 104)
+            Text(p?.name ?? "?").font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            if let note {
+                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+/// Full-screen game picker: the game cards on a wheel.
+struct GameWheelPicker: View {
+    let selected: Game
+    var onPick: (Game) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var centered: Game?
+
+    private let games = Game.allCases.filter { !$0.isChampions }
+    private let cardHeight: CGFloat = 122
+
+    var body: some View {
+        let current = centered ?? selected
+        GeometryReader { geo in
+            ZStack {
+                // the centred game's colours softly in the background
+                current.gradient
+                    .opacity(0.35)
+                    .blur(radius: 60)
+                    .ignoresSafeArea()
+                    .animation(.easeInOut(duration: 0.4), value: current)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: 14) {
+                        ForEach(games) { game in
+                            GameCoverCard(game: game, highlighted: game == selected)
+                                .frame(height: cardHeight)
+                                .padding(.horizontal, 28)
+                                .id(game)
+                                .scrollTransition(.interactive, axis: .vertical) { content, phase in
+                                    content
+                                        .rotation3DEffect(.degrees(phase.value * -38), axis: (x: 1, y: 0, z: 0),
+                                                          anchor: .center, perspective: 0.6)
+                                        .scaleEffect(1 - abs(phase.value) * 0.18)
+                                        .opacity(1 - abs(phase.value) * 0.55)
+                                }
+                                .onTapGesture {
+                                    if game == current {
+                                        pick(game)
+                                    } else {
+                                        withAnimation(.snappy) { centered = game }
+                                    }
+                                }
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .contentMargins(.vertical, max((geo.size.height - cardHeight) / 2, 0), for: .scrollContent)
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition(id: $centered, anchor: .center)
+                .sensoryFeedback(.selection, trigger: centered)
+
+                VStack {
+                    HStack {
+                        Text(L("Spiel wählen", "Choose game")).font(.title2.weight(.bold))
+                        Spacer()
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.headline)
+                                .frame(width: 40, height: 40)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 20)
+                    Spacer()
+                    Button { pick(current) } label: {
+                        Text(L("\(current.title) wählen", "Choose \(current.title)"))
+                            .font(.headline)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .tint(current.colors.first ?? .accentColor)
+                    .controlSize(.large)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 8)
+                }
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .onAppear { centered = selected }
+    }
+
+    private func pick(_ game: Game) {
+        onPick(game)
+        dismiss()
     }
 }

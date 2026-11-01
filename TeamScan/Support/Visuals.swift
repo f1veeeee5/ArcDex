@@ -51,6 +51,11 @@ enum SpriteURLs {
         return [URL(string: base + path)].compactMap { $0 }
     }
 
+    /// Trainer sprite from Pokémon Showdown (same host as the animated fallback sprites).
+    static func trainer(_ name: String) -> URL? {
+        URL(string: "https://play.pokemonshowdown.com/sprites/trainers/\(name).png")
+    }
+
     static func pokemon(_ id: Int, shiny: Bool, style: SpriteStyle) -> [URL] {
         let keys = Dex.shared.pokemon(id)?.spriteKeys ?? [String(id)]
         return keys.flatMap { pokemon(key: $0, shiny: shiny, style: style) }
@@ -321,5 +326,79 @@ struct MechanicBadge: View {
             .frame(width: size, height: size)
             .background(LinearGradient(colors: mechanic == .gmax ? [Color(hex: 0xE5007E), Color(hex: 0x9B1C8C)] : [.pink, .purple],
                                        startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+    }
+}
+
+
+/// Trainer sprite (pixel art from Pokémon Showdown); a person symbol when there is none.
+struct TrainerSprite: View {
+    let avatar: String?
+
+    var body: some View {
+        if let avatar, let url = SpriteURLs.trainer(avatar) {
+            RemoteImage(urls: [url], pixelated: true, placeholder: "person.fill")
+        } else {
+            Image(systemName: "person.fill").font(.title2).foregroundStyle(.tertiary)
+        }
+    }
+}
+
+/// One line of text that slowly scrolls back and forth when it doesn't fit (instead of "…").
+struct MarqueeText: View {
+    let text: String
+    var font: Font = .caption
+    var color: Color = .secondary
+
+    @State private var textWidth: CGFloat = 0
+    @State private var boxWidth: CGFloat = 0
+    @State private var shift = false
+
+    private var overflow: CGFloat { max(textWidth - boxWidth, 0) }
+
+    var body: some View {
+        // invisible copy: gives the line its height, may be narrower than the text
+        Text(text)
+            .font(font)
+            .lineLimit(1)
+            .hidden()
+            .overlay(alignment: .leading) {
+                GeometryReader { geo in
+                    let width = geo.size.width
+                    Text(text)
+                        .font(font)
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { textWidth = $0 }
+                        .offset(x: shift ? -overflow : 0)
+                        .frame(width: width, alignment: .leading)
+                        .onAppear { boxWidth = width }
+                        .onChange(of: width) { _, w in boxWidth = w }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+            // soft edges while it moves
+            .mask {
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: overflow > 0 && shift ? 8 : 0)
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: overflow > 0 && !shift ? 8 : 0)
+                }
+            }
+            .task(id: overflow) {
+                shift = false
+                guard overflow > 1 else { return }
+                let duration = Double(overflow) / 22 + 0.6
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1.6))
+                    withAnimation(.easeInOut(duration: duration)) { shift = true }
+                    try? await Task.sleep(for: .seconds(duration + 1.6))
+                    withAnimation(.easeInOut(duration: duration)) { shift = false }
+                    try? await Task.sleep(for: .seconds(duration))
+                }
+            }
     }
 }

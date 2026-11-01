@@ -12,11 +12,9 @@ struct TrainerDetailView: View {
 
     private var trainer: GuideTrainer? { GuideData.shared.guide(for: game)?.trainer(trainerId) }
 
-    /// Teams of this game first, then all others.
+    /// Only teams of this game.
     private var teams: [Team] {
-        let own = allTeams.filter { $0.game == game && !$0.members.isEmpty }
-        let other = allTeams.filter { $0.game != game && !$0.members.isEmpty }
-        return own + other
+        allTeams.filter { $0.game == game && !$0.members.isEmpty }
     }
 
     private var selectedTeam: Team? {
@@ -51,6 +49,17 @@ struct TrainerDetailView: View {
     private func header(_ t: GuideTrainer) -> some View {
         let color = t.type.map { TypeColor.color($0) } ?? Color.orange
         return VStack(alignment: .leading, spacing: 10) {
+            if t.avatar != nil {
+                ZStack(alignment: .bottom) {
+                    BattlePlatform(colors: t.type.map { [TypeColor.color($0)] } ?? [.orange, .pink])
+                        .frame(width: 170, height: 46)
+                        .padding(.bottom, 6)
+                    TrainerSprite(avatar: t.avatar)
+                        .frame(width: 150, height: 150)
+                        .padding(.bottom, 22)
+                }
+                .frame(maxWidth: .infinity)
+            }
             HStack(spacing: 8) {
                 Label(t.role.title, systemImage: t.role.icon)
                     .font(.caption.weight(.bold))
@@ -140,15 +149,15 @@ struct TrainerDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label(L("Match-up", "Match-up"), systemImage: "scalemass.fill").font(.title3.weight(.bold))
             if teams.isEmpty {
-                Text(L("Lege ein Team mit Pokémon an, um es mit diesem Trainer zu vergleichen.",
-                       "Create a team with Pokémon to compare it with this trainer."))
+                Text(L("Lege ein Team für \(game.title) an, um es mit diesem Trainer zu vergleichen.",
+                       "Create a team for \(game.title) to compare it with this trainer."))
                     .font(.subheadline).foregroundStyle(.secondary)
                     .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
             } else if let team = selectedTeam {
                 Menu {
                     Picker(selection: Binding(get: { team.uuid }, set: { teamId = $0 })) {
                         ForEach(teams) { tm in
-                            Text("\(tm.name.isEmpty ? L("Team", "Team") : tm.name) · \(tm.game.compactTitle)").tag(tm.uuid)
+                            Text(tm.name.isEmpty ? L("Team", "Team") : tm.name).tag(tm.uuid)
                         }
                     } label: { EmptyView() }
                     .pickerStyle(.inline)
@@ -333,23 +342,24 @@ struct MatchupResultView: View {
         return HStack(spacing: 10) {
             PokemonSprite(pokemonId: a.opponent.p).frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 2) {
-                Text(dex.pokemon(a.opponent.p)?.name ?? "?").font(.subheadline.weight(.semibold)).lineLimit(1)
+                MarqueeText(text: dex.pokemon(a.opponent.p)?.name ?? "?", font: .subheadline.weight(.semibold), color: .primary)
                 Text("Lv. \(a.opponent.l)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
-            .frame(width: 92, alignment: .leading)
+            .frame(width: 84, alignment: .leading)
             Image(systemName: "arrow.left").font(.caption.weight(.bold)).foregroundStyle(gradeColor)
             if let m = a.member {
                 PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny).frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.displayName).font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Group {
-                        if let id = a.moveId, let move = dex.move(id) {
-                            Text("\(move.name) · ~\(Int(min(a.damage, 9.99) * 100)) %")
-                        } else {
-                            Text(L("keine passende Attacke", "no fitting move"))
+                    MarqueeText(text: m.displayName, font: .subheadline.weight(.semibold), color: .primary)
+                    if let id = a.moveId, let move = dex.move(id) {
+                        HStack(spacing: 4) {
+                            Circle().fill(TypeColor.color(move.t)).frame(width: 6, height: 6)
+                            MarqueeText(text: L("\(move.name) · ~\(Int(min(a.damage, 9.99) * 100)) % pro Treffer",
+                                                "\(move.name) · ~\(Int(min(a.damage, 9.99) * 100)) % per hit"))
                         }
+                    } else {
+                        MarqueeText(text: L("keine passende Attacke", "no fitting move"))
                     }
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)

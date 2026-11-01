@@ -45,6 +45,8 @@ nonisolated struct GuideTrainer: Codable, Hashable, Identifiable {
     let hint: GuideText?
     let teams: [GuideTeam]
     let sources: [String]
+    /// Pokémon Showdown trainer sprite name
+    var avatar: String?
 
     /// strongest Pokémon level
     var aceLevel: Int { teams.flatMap(\.team).map(\.l).max() ?? 0 }
