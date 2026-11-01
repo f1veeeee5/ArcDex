@@ -38,7 +38,7 @@ struct GamePlanView: View {
                     Divider().padding(.leading, 52)
                     section("win", L("Siegbedingungen", "Win conditions"), icon: "trophy.fill", color: .yellow) { entries(plan.winConditions, color: .yellow) }
                     Divider().padding(.leading, 52)
-                    section("answers", L("Antworten auf Gefahren", "Answers to threats"), icon: "exclamationmark.shield.fill", color: .red) { entries(plan.answers, color: .red) }
+                    section("answers", L("Antworten auf Gefahren", "Answers to threats"), icon: "exclamationmark.shield.fill", color: .red) { answers(plan.answers) }
                     Divider().padding(.leading, 52)
                     section("roles", L("Rollen", "Roles"), icon: "person.3.fill", color: .blue) { entries(plan.roles, color: .blue) }
                 }
@@ -119,6 +119,68 @@ struct GamePlanView: View {
                 }
             }
         }
+    }
+
+    /// Answers: the threat on top (type symbol + name), below which team member handles it and how.
+    private func answers(_ list: [GamePlan.Entry]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(list) { entry in
+                let a = resolve(entry)
+                HStack(alignment: .top, spacing: 10) {
+                    ThreatSymbol(typeId: a.typeId).frame(width: 36, height: 36)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(a.threat).font(.body.weight(.semibold))
+                        if let m = a.member {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.turn.down.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                                PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny)
+                                    .frame(width: 24, height: 24)
+                                Text(m.displayName).font(.subheadline.weight(.semibold))
+                            }
+                        }
+                        Text((try? AttributedString(markdown: entry.text)) ?? AttributedString(entry.text))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    /// The AI sometimes mixes up the fields (threat in "pokemon", team member only in the text) – sort it out.
+    private func resolve(_ e: GamePlan.Entry) -> (threat: String, typeId: Int?, member: TeamMember?) {
+        var who = member(named: e.pokemon)
+        var threat = e.against ?? ""
+        if who == nil {
+            if let against = e.against, let m = self.member(named: against) {
+                who = m
+                threat = e.pokemon
+            } else {
+                threat = e.pokemon
+                if let against = e.against, !against.isEmpty, typeId(in: e.pokemon) == nil { threat = against }
+                let text = e.text.lowercased()
+                who = team.sortedMembers.first { text.contains($0.displayName.lowercased()) }
+                    ?? team.sortedMembers.first { m in m.species.map { text.contains($0.name.lowercased()) } ?? false }
+            }
+        }
+        if threat.isEmpty { threat = e.pokemon }
+        let type = typeId(in: threat) ?? typeId(in: e.against ?? "")
+        if let type, let t = Dex.shared.type(type) {
+            // "Ground-type Pokémon" -> plain type name, unless the threat is something more specific
+            let words = threat.split(whereSeparator: { !$0.isLetter }).count
+            if words <= 3 { threat = L("\(t.name)-Pokémon", "\(t.name) Pokémon") }
+        }
+        return (threat, type, who)
+    }
+
+    /// Type mentioned in a text (German or English name).
+    private func typeId(in text: String) -> Int? {
+        let words = Set(text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
+        let lower = text.lowercased()
+        return Dex.shared.types.first { t in
+            t.id <= 18 && (words.contains(t.en.lowercased()) || words.contains(t.de.lowercased())
+                           || lower.contains(t.en.lowercased() + "-") || lower.contains(t.de.lowercased() + "-"))
+        }?.id
     }
 
     private func isUnavailable(_ engine: GamePlanner.Engine) -> Bool {
@@ -257,5 +319,44 @@ struct BulletList: View {
                 }
             }
         }
+    }
+}
+
+
+/// Round symbol for a type (in its type colour); without a type a shield.
+struct ThreatSymbol: View {
+    let typeId: Int?
+
+    private var symbol: String {
+        switch typeId {
+        case T.normal: return "circle.fill"
+        case T.fighting: return "figure.boxing"
+        case T.flying: return "wind"
+        case T.poison: return "drop.triangle.fill"
+        case T.ground: return "mountain.2.fill"
+        case T.rock: return "diamond.fill"
+        case T.bug: return "ladybug.fill"
+        case T.ghost: return "theatermasks.fill"
+        case T.steel: return "shield.lefthalf.filled"
+        case T.fire: return "flame.fill"
+        case T.water: return "drop.fill"
+        case T.grass: return "leaf.fill"
+        case T.electric: return "bolt.fill"
+        case T.psychic: return "eye.fill"
+        case T.ice: return "snowflake"
+        case T.dragon: return "lizard.fill"
+        case T.dark: return "moon.fill"
+        case T.fairy: return "sparkles"
+        default: return "exclamationmark.shield.fill"
+        }
+    }
+
+    var body: some View {
+        let color = typeId.map { TypeColor.color($0) } ?? .red
+        Image(systemName: symbol)
+            .font(.system(size: 16, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(color.gradient, in: Circle())
     }
 }

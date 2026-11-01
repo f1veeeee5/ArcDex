@@ -208,7 +208,7 @@ enum GamePlanner {
         - summary: 2 short bullet points about the team's style and strengths.
         - lead: \(doubles ? "exactly 2 entries" : "exactly 1 entry") – why this Pokémon leads and its job in the first turns (with moves).
         - winConditions: 1–3 entries – how this Pokémon wins: which moves, which setup, what must be removed first.
-        - answers: 2–4 entries – "against" names the threat (a type, a Pokémon kind or a strategy like Trick Room), "text" says how this team member answers it.
+        - answers: 2–4 entries – "against" is the opposing threat (a type, a Pokémon kind or a strategy like Trick Room), "pokemon" is the OWN team member that answers it (never the threat), "text" says how.
         - roles: exactly \(names.count) entries, one for EVERY team member in this order: \(names.joined(separator: ", ")).
         Every "text" is 1–2 short sentences (max 30 words). Put move names in **bold**.
         """
@@ -240,10 +240,10 @@ enum GamePlanner {
 
     @Generable
     nonisolated struct AppleAnswer {
-        @Guide(description: "Name of the team member exactly as listed.")
-        var pokemon: String
-        @Guide(description: "The threat it answers: a type, a kind of Pokémon or a strategy.")
+        @Guide(description: "The threat: an opposing type (e.g. Ground), a kind of Pokémon or a strategy (e.g. Trick Room).")
         var against: String
+        @Guide(description: "The OWN team member that answers the threat, exactly as listed – never the threat itself.")
+        var pokemon: String
         @Guide(description: "1–2 short sentences: how it answers the threat.")
         var text: String
     }
