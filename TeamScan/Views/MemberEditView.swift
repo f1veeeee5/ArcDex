@@ -27,6 +27,7 @@ struct MemberEditView: View {
     @State private var showMoveScan = false
     @State private var showSummaryScan = false
     @State private var confirmDelete = false
+    @State private var showCalc = false
     @AppStorage("showMovesetTips") private var showMovesetTips = true
     @Environment(\.pagerSwipeLock) private var swipeLock
 
@@ -138,6 +139,17 @@ struct MemberEditView: View {
                         Label(L("Ändern", "Change"), systemImage: "arrow.triangle.2.circlepath").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                }
+
+                if let team = member.team {
+                    Button { showCalc = true } label: {
+                        Label(L("Schaden berechnen", "Calculate damage"), systemImage: "bolt.horizontal.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                    .sheet(isPresented: $showCalc) {
+                        DamageCalcView(game: game, team: team, member: member)
+                    }
                 }
             }
             .padding(.vertical, 8)

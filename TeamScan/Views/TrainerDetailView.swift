@@ -9,6 +9,14 @@ struct TrainerDetailView: View {
     @Query(sort: \Team.updatedAt, order: .reverse) private var allTeams: [Team]
     @State private var variant = 0
     @State private var teamId: UUID?
+    @State private var calc: CalcRequest?
+
+    struct CalcRequest: Identifiable {
+        let id = UUID()
+        let team: Team
+        let member: TeamMember?
+        let opponentIndex: Int
+    }
 
     private var trainer: GuideTrainer? { GuideData.shared.guide(for: game)?.trainer(trainerId) }
 
@@ -39,6 +47,11 @@ struct TrainerDetailView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle(trainer.name.text)
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $calc) { req in
+                DamageCalcView(game: game, team: req.team, member: req.member,
+                               pool: trainer.teams[min(variant, trainer.teams.count - 1)].team,
+                               poolTitle: trainer.name.text, opponentIndex: req.opponentIndex)
+            }
         } else {
             ContentUnavailableView(L("Nicht gefunden", "Not found"), systemImage: "questionmark")
         }
@@ -180,7 +193,9 @@ struct TrainerDetailView: View {
                 .buttonStyle(.plain)
 
                 let result = Matchup.evaluate(team: team, against: t, teamIndex: variant, game: game)
-                MatchupResultView(result: result, team: team, game: game)
+                MatchupResultView(result: result, team: team, game: game) { index in
+                    calc = CalcRequest(team: team, member: result.answers[index].member, opponentIndex: index)
+                }
             }
         }
     }
@@ -266,6 +281,8 @@ struct MatchupResultView: View {
     let result: Matchup
     let team: Team
     let game: Game
+    /// tap on a row: open the damage calculator for that opponent
+    var onOpen: ((Int) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -273,10 +290,15 @@ struct MatchupResultView: View {
             VStack(spacing: 0) {
                 ForEach(Array(result.answers.enumerated()), id: \.offset) { i, a in
                     if i > 0 { Divider().padding(.leading, 14) }
-                    answerRow(a)
+                    Button { onOpen?(i) } label: { answerRow(a) }
+                        .buttonStyle(.plain)
                 }
             }
             .card()
+            if onOpen != nil {
+                Label(L("Tippe auf ein Pokémon für den Schadensrechner.", "Tap a Pokémon for the damage calculator."), systemImage: "hand.tap")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if !result.tips.isEmpty {
                 Label(L("Tipps", "Tips"), systemImage: "checklist").font(.headline).padding(.top, 4)
                 ForEach(result.tips) { tip in
@@ -394,6 +416,7 @@ struct MatchupResultView: View {
             }
         }
         .padding(14)
+        .contentShape(Rectangle())
     }
 
     private func icon(_ k: Matchup.Tip.Kind) -> String {
