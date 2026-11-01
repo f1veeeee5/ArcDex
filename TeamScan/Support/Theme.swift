@@ -47,3 +47,22 @@ extension ButtonStyle where Self == AppButtonStyle {
     /// Other actions: soft capsule in the tint colour.
     static var appSecondary: AppButtonStyle { AppButtonStyle(kind: .secondary) }
 }
+
+/// Small icon button without any background (e.g. the "+" next to a section title).
+struct AppIconButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.tint)
+            .contentShape(Rectangle())
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.9 : 1)
+            .animation(.snappy(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == AppIconButtonStyle {
+    /// Icon only, no capsule behind it.
+    static var appIcon: AppIconButtonStyle { AppIconButtonStyle() }
+}

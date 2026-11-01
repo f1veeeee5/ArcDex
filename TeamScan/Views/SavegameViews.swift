@@ -198,6 +198,9 @@ struct SavegameDetailView: View {
             Label(title, systemImage: icon).font(.title3.weight(.bold))
             Spacer()
             accessory()
+                .menuStyle(.button)
+                .buttonStyle(.appIcon)
+                .menuIndicator(.hidden)
         }
         .padding(.top, 6)
     }

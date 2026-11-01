@@ -299,6 +299,9 @@ struct NuzlockeRunView: View {
             Text(count).font(.headline.monospacedDigit()).foregroundStyle(.secondary)
             Spacer()
             accessory()
+                .menuStyle(.button)
+                .buttonStyle(.appIcon)
+                .menuIndicator(.hidden)
         }
         .padding(.top, 6)
     }
