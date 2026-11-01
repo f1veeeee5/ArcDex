@@ -45,9 +45,9 @@ enum SpriteStyle: String, CaseIterable, Identifiable {
 enum SpriteURLs {
     private static let base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/"
 
-    /// Official type icons: Champions (symbol only) or the pixel label of Black 2 / White 2.
+    /// Official type icons: Champions (symbol only) or the pixel label of X / Y (Black 2 / White 2 has no Fairy type yet).
     static func typeIcon(_ id: Int, pixel: Bool) -> [URL] {
-        let path = pixel ? "types/generation-v/black-2-white-2/\(id).png" : "types/generation-ix/champions/small/\(id).png"
+        let path = pixel ? "types/generation-vi/x-y/\(id).png" : "types/generation-ix/champions/small/\(id).png"
         return [URL(string: base + path)].compactMap { $0 }
     }
 

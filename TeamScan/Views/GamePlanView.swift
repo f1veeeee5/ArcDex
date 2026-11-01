@@ -323,7 +323,7 @@ struct BulletList: View {
 }
 
 
-/// Official type icon: in 3D the round-cornered icon of Pokémon Champions, in Pixel the Gen-5 label.
+/// Official type icon: in 3D the round-cornered icon of Pokémon Champions, in Pixel the label of X / Y.
 /// Threats that are no type (e.g. Trick Room) get a shield.
 struct ThreatSymbol: View {
     let typeId: Int?
@@ -334,6 +334,7 @@ struct ThreatSymbol: View {
             let pixel = SpriteStyle(rawValue: styleRaw) == .pixel
             RemoteImage(urls: SpriteURLs.typeIcon(typeId, pixel: pixel), pixelated: pixel, placeholder: "circle.fill")
                 .clipShape(RoundedRectangle(cornerRadius: pixel ? 0 : 9, style: .continuous))
+                .padding(.top, pixel ? 4 : 0)
         } else {
             Image(systemName: "exclamationmark.shield.fill")
                 .font(.system(size: 16, weight: .bold))
