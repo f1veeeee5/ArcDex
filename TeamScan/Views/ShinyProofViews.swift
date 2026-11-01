@@ -162,6 +162,14 @@ struct ShinyProofCard: View {
                         }
                         Text(L("Noch \(remaining(deadline.timeIntervalSince(context.date))) Zeit", "\(remaining(deadline.timeIntervalSince(context.date))) left"))
                             .font(.caption).foregroundStyle(.secondary)
+                        #if DEBUG
+                        Button { ProofStore.save(image: ProofStore.mockImage(for: hunt), for: hunt) } label: {
+                            Label(L("Test-Foto einsetzen (nur Entwickler)", "Insert test photo (developer only)"), systemImage: "hammer.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.appSecondary)
+                        .tint(.gray)
+                        #endif
                     }
                 } else if hunt.proofFile == nil {
                     Label(L("Kein Fang-Beleg – die 24 Stunden nach dem Fund sind vorbei.", "No catch proof – the 24 hours after the find are over."),

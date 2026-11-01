@@ -94,6 +94,10 @@ struct SettingsView: View {
 
                 AISettingsSection()
 
+                #if DEBUG
+                DeveloperSection()
+                #endif
+
                 Section {
                     ShareLink(item: BackupFileShare(data: Backup.data(context: context), name: Backup.fileName),
                               preview: SharePreview(L("ArcDex-Backup", "ArcDex backup"))) {
