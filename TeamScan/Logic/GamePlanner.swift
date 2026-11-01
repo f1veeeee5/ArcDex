@@ -4,91 +4,64 @@ import FoundationModels
 
 // MARK: - Result
 
-/// AI game plan of a team (stored with the team). Every section is a list of short bullet points.
+/// AI game plan of a team (stored with the team), always in the same fixed structure.
 nonisolated struct GamePlan: Codable, Equatable {
-    nonisolated struct Role: Codable, Equatable, Identifiable {
+    /// One line of a section: a team member and what it does.
+    nonisolated struct Entry: Codable, Equatable, Identifiable {
         var pokemon: String
-        var points: [String]
-        var id: String { pokemon }
+        /// for answers: the threat it answers
+        var against: String?
+        var text: String
+        var id: String { pokemon + (against ?? "") + text }
 
-        init(pokemon: String, points: [String]) {
-            self.pokemon = pokemon
-            self.points = points
-        }
-
-        enum CodingKeys: String, CodingKey { case pokemon, points, role }
-
-        init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            pokemon = try c.decode(String.self, forKey: .pokemon).replacingOccurrences(of: "*", with: "")
-            points = GamePlan.bullets(c, .points) ?? GamePlan.bullets(c, .role) ?? []
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var c = encoder.container(keyedBy: CodingKeys.self)
-            try c.encode(pokemon, forKey: .pokemon)
-            try c.encode(points, forKey: .points)
+        init(pokemon: String, against: String? = nil, text: String) {
+            self.pokemon = pokemon.replacingOccurrences(of: "*", with: "").trimmingCharacters(in: .whitespaces)
+            self.against = against.map { $0.replacingOccurrences(of: "*", with: "").trimmingCharacters(in: .whitespaces) }
+                .flatMap { $0.isEmpty ? nil : $0 }
+            self.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 
     var summary: [String]
-    var lead: [String]
-    var winCondition: [String]
-    var threats: [String]
-    var roles: [Role]
+    var lead: [Entry]
+    var winConditions: [Entry]
+    var answers: [Entry]
+    var roles: [Entry]
     /// "apple" or a Claude model id
     var engine: String = "apple"
     var createdAt: Date = Date()
     /// team composition the plan was made for
     var signature: String = ""
 
-    init(summary: [String], lead: [String], winCondition: [String], threats: [String], roles: [Role]) {
+    init(summary: [String], lead: [Entry], winConditions: [Entry], answers: [Entry], roles: [Entry]) {
         self.summary = summary
         self.lead = lead
-        self.winCondition = winCondition
-        self.threats = threats
+        self.winConditions = winConditions
+        self.answers = answers
         self.roles = roles
     }
 
-    enum CodingKeys: String, CodingKey { case summary, lead, winCondition, threats, roles, engine, createdAt, signature }
+    enum CodingKeys: String, CodingKey { case summary, lead, winConditions, answers, roles, engine, createdAt, signature }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        summary = GamePlan.bullets(c, .summary) ?? []
-        lead = GamePlan.bullets(c, .lead) ?? []
-        winCondition = GamePlan.bullets(c, .winCondition) ?? []
-        threats = GamePlan.bullets(c, .threats) ?? []
-        roles = (try? c.decode([Role].self, forKey: .roles)) ?? []
+        summary = (try? c.decode([String].self, forKey: .summary)) ?? (try? c.decode(String.self, forKey: .summary)).map { [$0] } ?? []
+        lead = (try? c.decode([Entry].self, forKey: .lead)) ?? []
+        winConditions = (try? c.decode([Entry].self, forKey: .winConditions)) ?? []
+        answers = (try? c.decode([Entry].self, forKey: .answers)) ?? []
+        roles = (try? c.decode([Entry].self, forKey: .roles)) ?? []
         engine = (try? c.decode(String.self, forKey: .engine)) ?? "apple"
         createdAt = (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         signature = (try? c.decode(String.self, forKey: .signature)) ?? ""
     }
 
-    /// A list of bullets – or one older plain text, split into sentences.
-    static func bullets<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ key: K) -> [String]? {
-        if let list = try? c.decode([String].self, forKey: key) { return clean(list) }
-        if let text = try? c.decode(String.self, forKey: key) { return clean(sentences(text)) }
-        return nil
-    }
-
-    static func sentences(_ text: String) -> [String] {
-        var result: [String] = []
-        text.enumerateSubstrings(in: text.startIndex..., options: .bySentences) { sub, _, _, _ in
-            if let sub { result.append(sub) }
-        }
-        return result.isEmpty ? [text] : result
-    }
-
-    static func clean(_ list: [String]) -> [String] {
-        list.map { $0.trimmingCharacters(in: .whitespacesAndNewlines)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "-•*·").union(.whitespaces)) }
-            .filter { !$0.isEmpty }
-    }
+    /// Plans of older app versions (other structure) can't be shown – they are simply created again.
+    var isEmpty: Bool { lead.isEmpty && winConditions.isEmpty && answers.isEmpty && roles.isEmpty }
 }
 
 extension Team {
     var gamePlan: GamePlan? {
-        get { gamePlanData.flatMap { try? JSONDecoder().decode(GamePlan.self, from: $0) } }
+        get { gamePlanData.flatMap { try? JSONDecoder().decode(GamePlan.self, from: $0) }.flatMap { $0.isEmpty ? nil : $0 } }
         set { gamePlanData = newValue.flatMap { try? JSONEncoder().encode($0) } }
     }
 
@@ -202,17 +175,19 @@ enum GamePlanner {
     static func makePlan(for team: Team) async throws -> GamePlan {
         let facts = TeamFacts.text(for: team)
         let doubles = team.battleFormat == .doubles
+        let names = team.sortedMembers.map(\.displayName)
         var plan: GamePlan
         switch engine {
         case .claude(let model):
-            plan = try await claude(facts: facts, model: model, doubles: doubles)
+            plan = try await claude(facts: facts, names: names, model: model, doubles: doubles)
             plan.engine = model.rawValue
         case .apple:
-            plan = try await apple(facts: facts, doubles: doubles)
+            plan = try await apple(facts: facts, names: names, doubles: doubles)
             plan.engine = "apple"
         case .none(let message):
             throw PlanError.message(message)
         }
+        plan.lead = Array(plan.lead.prefix(doubles ? 2 : 1))
         plan.createdAt = Date()
         plan.signature = team.planSignature
         return plan
@@ -220,22 +195,22 @@ enum GamePlanner {
 
     private static var languageName: String { Lang.current == .de ? "German" : "English" }
 
-    private static func instructions(doubles: Bool) -> String {
+    private static func instructions(doubles: Bool, names: [String]) -> String {
         let format = doubles
-            ? """
-              This is a DOUBLE BATTLE team: two Pokémon on each side at the same time. Name the lead PAIR, how the two support each other               (e.g. Protect, Fake Out, Tailwind, Trick Room, redirection, spread moves that hit both foes, partners that are immune to a spread move),               and which pair to bring in later.
-              """
-            : """
-              This is a SINGLE BATTLE team: one Pokémon on each side. Name the single lead, when to switch, and the order in which to bring the others.
-              """
+            ? "This is a DOUBLE BATTLE team (two Pokémon per side). The lead is a PAIR of exactly 2 team members; mention how they support each other (Protect, Fake Out, Tailwind, Trick Room, redirection, spread moves)."
+            : "This is a SINGLE BATTLE team (one Pokémon per side). The lead is exactly 1 team member; mention when to switch."
         return """
-        You are an experienced Pokémon coach. Write a practical, detailed game plan for the player's team in \(languageName).
+        You are an experienced Pokémon coach. Fill in a game plan for the player's team in \(languageName).
         \(format)
-        Use ONLY the facts given about the team (Pokémon, types, moves, items, abilities, stats, weaknesses).
-        Do not invent moves, items or abilities the team doesn't have. Refer to Pokémon by the names given.
-        Write SHORT BULLET POINTS, not paragraphs: 3–5 bullets per section, each bullet at most 15 words, one fact or action per bullet.
-        Be concrete: which Pokémon, which move, in which situation, when to switch.
-        Put Pokémon names and move names in **bold** (Markdown).
+        The team members are exactly: \(names.joined(separator: ", ")). Use only these names for "pokemon".
+        Use ONLY the facts given (types, moves, items, abilities, stats, weaknesses). Never invent moves, items or abilities.
+        Fixed structure:
+        - summary: 2 short bullet points about the team's style and strengths.
+        - lead: \(doubles ? "exactly 2 entries" : "exactly 1 entry") – why this Pokémon leads and its job in the first turns (with moves).
+        - winConditions: 1–3 entries – how this Pokémon wins: which moves, which setup, what must be removed first.
+        - answers: 2–4 entries – "against" names the threat (a type, a Pokémon kind or a strategy like Trick Room), "text" says how this team member answers it.
+        - roles: exactly \(names.count) entries, one for EVERY team member in this order: \(names.joined(separator: ", ")).
+        Every "text" is 1–2 short sentences (max 30 words). Put move names in **bold**.
         """
     }
 
@@ -243,58 +218,89 @@ enum GamePlanner {
 
     @Generable
     nonisolated struct AppleDraft {
-        @Guide(description: "2–3 short bullet points: style of the team, its strengths, how it wins. Max 15 words each.")
+        @Guide(description: "2 short bullet points about the team's style and strengths.")
         var summary: [String]
-        @Guide(description: "3–4 short bullet points: who leads (in doubles: the lead pair), first moves, what to do if the lead is countered. Max 15 words each.")
-        var lead: [String]
-        @Guide(description: "3–4 short bullet points: which Pokémon and moves win, what must be removed first, when to set up. Max 15 words each.")
-        var winCondition: [String]
-        @Guide(description: "3–5 short bullet points: biggest threats and how to answer each, including which team member to switch in. Max 15 words each.")
-        var threats: [String]
-        @Guide(description: "One entry per team member, in the given order.")
-        var roles: [AppleRole]
+        @Guide(description: "The lead: 1 entry in singles, 2 entries in doubles.")
+        var lead: [AppleEntry]
+        @Guide(description: "1 to 3 win conditions.")
+        var winConditions: [AppleEntry]
+        @Guide(description: "2 to 4 answers to threats.")
+        var answers: [AppleAnswer]
+        @Guide(description: "One entry for EVERY team member, in the given order.")
+        var roles: [AppleEntry]
     }
 
     @Generable
-    nonisolated struct AppleRole {
-        @Guide(description: "Name of the team member exactly as given in the facts.")
+    nonisolated struct AppleEntry {
+        @Guide(description: "Name of the team member exactly as listed.")
         var pokemon: String
-        @Guide(description: "2–3 short bullet points: its job, its key moves, when to bring it in. Max 12 words each.")
-        var points: [String]
+        @Guide(description: "1–2 short sentences: why and how, with move names.")
+        var text: String
     }
 
-    private static func apple(facts: String, doubles: Bool) async throws -> GamePlan {
-        let session = LanguageModelSession(instructions: instructions(doubles: doubles))
-        let response = try await session.respond(to: "Team facts:\n\(facts)\n\nWrite the game plan.", generating: AppleDraft.self)
+    @Generable
+    nonisolated struct AppleAnswer {
+        @Guide(description: "Name of the team member exactly as listed.")
+        var pokemon: String
+        @Guide(description: "The threat it answers: a type, a kind of Pokémon or a strategy.")
+        var against: String
+        @Guide(description: "1–2 short sentences: how it answers the threat.")
+        var text: String
+    }
+
+    private static func apple(facts: String, names: [String], doubles: Bool) async throws -> GamePlan {
+        let session = LanguageModelSession(instructions: instructions(doubles: doubles, names: names))
+        let response = try await session.respond(to: "Team facts:\n\(facts)\n\nFill in the game plan.", generating: AppleDraft.self)
         let d = response.content
-        return GamePlan(summary: GamePlan.clean(d.summary), lead: GamePlan.clean(d.lead), winCondition: GamePlan.clean(d.winCondition),
-                        threats: GamePlan.clean(d.threats), roles: d.roles.map { GamePlan.Role(pokemon: $0.pokemon.replacingOccurrences(of: "*", with: ""), points: GamePlan.clean($0.points)) })
+        var plan = GamePlan(summary: d.summary,
+                            lead: d.lead.map { .init(pokemon: $0.pokemon, text: $0.text) },
+                            winConditions: d.winConditions.map { .init(pokemon: $0.pokemon, text: $0.text) },
+                            answers: d.answers.map { .init(pokemon: $0.pokemon, against: $0.against, text: $0.text) },
+                            roles: d.roles.map { .init(pokemon: $0.pokemon, text: $0.text) })
+        // the small model sometimes skips team members – ask for each missing role separately
+        for name in missingRoles(plan, names: names) {
+            if let text = try? await session.respond(to: "In 1–2 short sentences: what is the role of \(name) in this team? Mention its key moves.").content {
+                plan.roles.append(.init(pokemon: name, text: text))
+            }
+        }
+        plan.roles = ordered(plan.roles, names: names)
+        return plan
+    }
+
+    private static func missingRoles(_ plan: GamePlan, names: [String]) -> [String] {
+        names.filter { name in !plan.roles.contains { $0.pokemon.localizedCaseInsensitiveCompare(name) == .orderedSame } }
+    }
+
+    /// Roles in team order, duplicates removed.
+    private static func ordered(_ roles: [GamePlan.Entry], names: [String]) -> [GamePlan.Entry] {
+        var result: [GamePlan.Entry] = []
+        for name in names {
+            if let r = roles.first(where: { $0.pokemon.localizedCaseInsensitiveCompare(name) == .orderedSame }) { result.append(r) }
+        }
+        return result + roles.filter { r in !names.contains { r.pokemon.localizedCaseInsensitiveCompare($0) == .orderedSame } }
     }
 
     // MARK: Claude API
 
-
-
-    private static func claude(facts: String, model: ClaudeModel, doubles: Bool) async throws -> GamePlan {
+    private static func claude(facts: String, names: [String], model: ClaudeModel, doubles: Bool) async throws -> GamePlan {
         guard let key = APIKeyStore.key else { throw PlanError.message(L("Kein Claude-Schlüssel eingetragen.", "No Claude key entered.")) }
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        request.timeoutInterval = 90
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        let system = instructions(doubles: doubles) + """
+        let system = instructions(doubles: doubles, names: names) + """
 
         Answer with ONLY a JSON object, no other text, in exactly this shape:
-        {"summary": ["...", "..."], "lead": ["...", "..."], "winCondition": ["...", "..."], "threats": ["...", "..."], "roles": [{"pokemon": "...", "points": ["...", "..."]}]}
-        Every list item is one short bullet point (max 15 words).
-        "roles" has one entry per team member in the given order.
+        {"summary": ["..."], "lead": [{"pokemon": "...", "text": "..."}], "winConditions": [{"pokemon": "...", "text": "..."}],
+         "answers": [{"pokemon": "...", "against": "...", "text": "..."}], "roles": [{"pokemon": "...", "text": "..."}]}
         """
         let body: [String: Any] = [
             "model": model.rawValue,
-            "max_tokens": 2500,
+            "max_tokens": 3000,
             "system": system,
-            "messages": [["role": "user", "content": "Team facts:\n\(facts)\n\nWrite the game plan."]],
+            "messages": [["role": "user", "content": "Team facts:\n\(facts)\n\nFill in the game plan."]],
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -316,9 +322,13 @@ enum GamePlanner {
         }
         // the JSON object inside the text (in case Claude adds a code fence)
         guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}"),
-              let parsed = try? JSONDecoder().decode(GamePlan.self, from: Data(text[start...end].utf8)) else {
+              var parsed = try? JSONDecoder().decode(GamePlan.self, from: Data(text[start...end].utf8)), !parsed.isEmpty else {
             throw PlanError.message(L("Claude hat keinen lesbaren Plan geliefert – bitte nochmal versuchen.", "Claude returned no readable plan – please try again."))
         }
+        parsed.roles = ordered(parsed.roles.map { .init(pokemon: $0.pokemon, text: $0.text) }, names: names)
+        parsed.lead = parsed.lead.map { .init(pokemon: $0.pokemon, text: $0.text) }
+        parsed.winConditions = parsed.winConditions.map { .init(pokemon: $0.pokemon, text: $0.text) }
+        parsed.answers = parsed.answers.map { .init(pokemon: $0.pokemon, against: $0.against, text: $0.text) }
         return parsed
     }
 }

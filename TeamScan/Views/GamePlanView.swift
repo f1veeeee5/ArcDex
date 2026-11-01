@@ -34,30 +34,13 @@ struct GamePlanView: View {
                 VStack(spacing: 0) {
                     section("summary", L("Überblick", "Overview"), icon: "text.alignleft", color: .indigo) { BulletList(points: plan.summary, color: .indigo) }
                     Divider().padding(.leading, 52)
-                    section("lead", L("Lead – wer startet", "Lead – who starts"), icon: "flag.fill", color: .green) { BulletList(points: plan.lead, color: .green) }
+                    section("lead", L("Lead – wer startet", "Lead – who starts"), icon: "flag.fill", color: .green) { entries(plan.lead, color: .green) }
                     Divider().padding(.leading, 52)
-                    section("win", L("Siegbedingung", "Win condition"), icon: "trophy.fill", color: .yellow) { BulletList(points: plan.winCondition, color: .yellow) }
+                    section("win", L("Siegbedingungen", "Win conditions"), icon: "trophy.fill", color: .yellow) { entries(plan.winConditions, color: .yellow) }
                     Divider().padding(.leading, 52)
-                    section("threats", L("Gefahren & Konter", "Threats & answers"), icon: "exclamationmark.shield.fill", color: .red) { BulletList(points: plan.threats, color: .red) }
-                    if !plan.roles.isEmpty {
-                        Divider().padding(.leading, 52)
-                        section("roles", L("Rollen", "Roles"), icon: "person.3.fill", color: .blue) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                ForEach(plan.roles) { role in
-                                    HStack(alignment: .top, spacing: 10) {
-                                        if let m = member(named: role.pokemon) {
-                                            PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny)
-                                                .frame(width: 34, height: 34)
-                                        }
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(role.pokemon).font(.body.weight(.semibold))
-                                            BulletList(points: role.points, color: .blue)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    section("answers", L("Antworten auf Gefahren", "Answers to threats"), icon: "exclamationmark.shield.fill", color: .red) { entries(plan.answers, color: .red) }
+                    Divider().padding(.leading, 52)
+                    section("roles", L("Rollen", "Roles"), icon: "person.3.fill", color: .blue) { entries(plan.roles, color: .blue) }
                 }
                 .card()
                 HStack {
@@ -104,6 +87,40 @@ struct GamePlanView: View {
         }
     }
 
+    /// One line per Pokémon: sprite, bold name, (for answers) the threat, then the explanation.
+    private func entries(_ list: [GamePlan.Entry], color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(list) { entry in
+                HStack(alignment: .top, spacing: 10) {
+                    Group {
+                        if let m = member(named: entry.pokemon) {
+                            PokemonSprite(pokemonId: m.battleForm(in: team.game)?.id ?? m.pokemonId, shiny: m.shiny)
+                        } else {
+                            Circle().fill(color.opacity(0.15))
+                        }
+                    }
+                    .frame(width: 36, height: 36)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(entry.pokemon).font(.body.weight(.semibold))
+                            if let against = entry.against {
+                                Text(L("gegen \(against)", "vs \(against)"))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(color)
+                                    .padding(.horizontal, 8).padding(.vertical, 2)
+                                    .background(color.opacity(0.14), in: Capsule())
+                                    .lineLimit(1)
+                            }
+                        }
+                        Text((try? AttributedString(markdown: entry.text)) ?? AttributedString(entry.text))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
     private func isUnavailable(_ engine: GamePlanner.Engine) -> Bool {
         if case .none = engine { return true }
         return false
@@ -129,7 +146,7 @@ struct GamePlanView: View {
                 let plan = try await GamePlanner.makePlan(for: team)
                 withAnimation(.snappy) {
                     team.gamePlan = plan
-                    open = ["summary", "lead", "win", "threats", "roles"]
+                    open = ["summary", "lead", "win", "answers", "roles"]
                 }
             } catch {
                 self.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
