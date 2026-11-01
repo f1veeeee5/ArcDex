@@ -266,6 +266,8 @@ struct SavegameEditSheet: View {
     @State private var mode: RunMode = .normal
     @State private var player1 = ""
     @State private var player2 = ""
+    @State private var trainerName = ""
+    @State private var trainerID = ""
     @State private var loaded = false
 
     var body: some View {
@@ -305,6 +307,8 @@ struct SavegameEditSheet: View {
                 mode = save.mode
                 player1 = save.player1
                 player2 = save.player2
+                trainerName = save.trainerName
+                trainerID = save.trainerID
             }
         }
     }
@@ -351,6 +355,19 @@ struct SavegameEditSheet: View {
             } footer: {
                 Text(modeFooter)
             }
+            if game.hasShinyHunting {
+                Section {
+                    TextField(L("OT-Name (dein Name im Spiel)", "OT name (your name in the game)"), text: $trainerName)
+                        .autocorrectionDisabled()
+                    TextField(L("ID-Nr.", "ID No."), text: $trainerID)
+                        .keyboardType(.numberPad)
+                } header: {
+                    Text(L("Trainer – für den Fang-Beleg", "Trainer – for the catch proof"))
+                } footer: {
+                    Text(L("Steht auf deiner Trainerkarte und auf der Statusseite jedes Pokémon. Damit prüft die App, ob ein Shiny wirklich von dir gefangen wurde.",
+                           "Shown on your trainer card and on the summary page of every Pokémon. The app uses it to check that a shiny was really caught by you."))
+                }
+            }
         }
         .onChange(of: self.game) { _, new in
             if let new, !Platform.options(for: new).contains(platform) { platform = Platform.defaultPlatform(for: new) }
@@ -389,6 +406,8 @@ struct SavegameEditSheet: View {
             save.mode = mode
             save.player1 = player1.trimmingCharacters(in: .whitespaces)
             save.player2 = player2.trimmingCharacters(in: .whitespaces)
+            save.trainerName = trainerName.trimmingCharacters(in: .whitespaces)
+            save.trainerID = trainerID.filter(\.isNumber)
             prepareRun(save)
             save.touch()
             onSave(save)
@@ -398,6 +417,8 @@ struct SavegameEditSheet: View {
             new.mode = mode
             new.player1 = player1.trimmingCharacters(in: .whitespaces)
             new.player2 = player2.trimmingCharacters(in: .whitespaces)
+            new.trainerName = trainerName.trimmingCharacters(in: .whitespaces)
+            new.trainerID = trainerID.filter(\.isNumber)
             prepareRun(new)
             onSave(new)
         }

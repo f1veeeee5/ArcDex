@@ -777,10 +777,11 @@ struct FoundShinyTile: View {
             HStack(spacing: 3) {
                 Text(hunt.name).font(.caption.weight(.semibold)).lineLimit(1)
                 if hunt.proofFile != nil {
-                    Image(systemName: "checkmark.seal.fill")
+                    let state = ProofState(hunt: hunt)
+                    Image(systemName: state.icon)
                         .font(.caption)
-                        .foregroundStyle(.green)
-                        .accessibilityLabel(L("Fang-Beleg vorhanden", "Catch proof recorded"))
+                        .foregroundStyle(state.color)
+                        .accessibilityLabel(L("Fang-Beleg: \(state.label)", "Catch proof: \(state.label)"))
                 }
             }
             Text("\(hunt.count) · \(hunt.foundAt?.formatted(.dateTime.day().month(.abbreviated).year(.twoDigits)) ?? "")")

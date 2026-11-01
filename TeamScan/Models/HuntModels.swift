@@ -96,6 +96,9 @@ final class Savegame {
     var links: [NuzlockeLink] = []
     /// The local profile this save file belongs to (nil only for data of older app versions, fixed on launch).
     var profileID: UUID?
+    /// OT name and ID No. of the player in this game – used to check catch proofs
+    var trainerName: String = ""
+    var trainerID: String = ""
 
     init(game: Game, platform: Platform? = nil, name: String = "") {
         self.gameRaw = game.rawValue
@@ -196,6 +199,8 @@ final class ShinyHunt {
     var proofFile: String?
     var proofIsVideo: Bool = false
     var proofTakenAt: Date?
+    /// Result of reading the proof photo (JSON of `ProofCheck`), nil = not checked yet
+    var proofCheckData: Data?
 
     init(pokemonId: Int, method: HuntMethod) {
         self.pokemonId = pokemonId

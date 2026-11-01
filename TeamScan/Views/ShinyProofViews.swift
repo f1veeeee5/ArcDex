@@ -43,6 +43,7 @@ enum ProofStore {
         hunt.proofFile = name
         hunt.proofIsVideo = video
         hunt.proofTakenAt = Date()
+        hunt.proofCheckData = nil   // the new photo gets checked again
     }
 
     /// Picture for thumbnails and the share card (first frame of a video).
@@ -103,20 +104,26 @@ struct ShinyProofCard: View {
     @State private var showViewer = false
     @State private var thumb: UIImage?
     @State private var cardImage: UIImage?
+    @State private var checking = false
+    @State private var editSave: Savegame?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label(L("Fang-Beleg", "Catch proof"), systemImage: hunt.proofFile != nil ? "checkmark.seal.fill" : "seal")
+                let state = ProofState(hunt: hunt, checking: checking)
+                Label(L("Fang-Beleg", "Catch proof"), systemImage: state.icon)
                     .font(.headline)
-                    .foregroundStyle(hunt.proofFile != nil ? Color.green : Color.primary)
+                    .foregroundStyle(state.color)
                 Spacer()
                 if hunt.proofFile != nil {
-                    Text(L("belegt", "proven"))
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.green)
-                        .padding(.horizontal, 9).padding(.vertical, 4)
-                        .background(Color.green.opacity(0.15), in: Capsule())
+                    HStack(spacing: 5) {
+                        if checking { ProgressView().controlSize(.mini) }
+                        Text(state.label)
+                    }
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(state.color)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(state.color.opacity(0.15), in: Capsule())
                 }
             }
 
@@ -137,6 +144,7 @@ struct ShinyProofCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
+                checkList
                 if let taken = hunt.proofTakenAt, let found = hunt.foundAt {
                     Text(L("Aufgenommen \(taken.formatted(.dateTime.day().month().hour().minute())) · \(delay(taken.timeIntervalSince(found))) nach dem Fund",
                            "Taken \(taken.formatted(.dateTime.day().month().hour().minute())) · \(delay(taken.timeIntervalSince(found))) after the find"))
@@ -194,10 +202,63 @@ struct ShinyProofCard: View {
                 .ignoresSafeArea()
         }
         .sheet(isPresented: $showViewer) { ProofViewer(hunt: hunt) }
-        .task(id: "\(hunt.proofFile ?? "")-\(hunt.count)-\(hunt.foundAt?.timeIntervalSince1970 ?? 0)") {
+        .task(id: "\(hunt.proofFile ?? "")-\(hunt.count)-\(hunt.foundAt?.timeIntervalSince1970 ?? 0)-\(hunt.proofCheck?.status.rawValue ?? "")") {
             thumb = await ProofStore.thumbnail(for: hunt)
+            if hunt.proofFile != nil && hunt.proofCheckData == nil && !checking {
+                checking = true
+                await ProofChecker.run(for: hunt)
+                checking = false
+            }
             cardImage = await ShinyShareCard.render(hunt: hunt, proof: thumb)
         }
+        .sheet(item: $editSave, onDismiss: recheck) { save in
+            SavegameEditSheet(save: save, suggested: nil) { _ in }
+        }
+    }
+
+    /// What was checked on the photo: ✓ fits, ✗ doesn't fit (with the reason), ? couldn't be checked.
+    @ViewBuilder private var checkList: some View {
+        if let check = hunt.proofCheck, !checking {
+            VStack(alignment: .leading, spacing: 8) {
+                if check.items.isEmpty {
+                    Label(L("Auf dem Foto war kaum Text lesbar – nicht geprüft. Fotografiere die Statusseite des Pokémon (gerade, scharf, ohne Spiegelung).",
+                            "Hardly any text was readable on the photo – not checked. Photograph the Pokémon's summary page (straight, sharp, no glare)."),
+                          systemImage: "questionmark.circle.fill")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                ForEach(check.items) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: item.status == .pass ? "checkmark.circle.fill" : item.status == .fail ? "xmark.circle.fill" : "questionmark.circle.fill")
+                            .foregroundStyle(item.status == .pass ? Color.green : item.status == .fail ? Color.orange : Color.secondary)
+                        Text(Lang.current == .de ? item.de : item.en)
+                            .font(.subheadline)
+                            .foregroundStyle(item.status == .fail ? Color.primary : Color.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                HStack(spacing: 10) {
+                    if check.items.contains(where: { ($0.kind == .ot || $0.kind == .id) && $0.status == .unknown }), let save = hunt.savegame {
+                        Button { editSave = save } label: {
+                            Label(L("OT & ID eintragen", "Enter OT & ID"), systemImage: "person.text.rectangle")
+                        }
+                        .buttonStyle(.appSecondary)
+                        .controlSize(.small)
+                    }
+                    Button { recheck() } label: {
+                        Label(L("Erneut prüfen", "Check again"), systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(.appSecondary)
+                    .controlSize(.small)
+                    .tint(.gray)
+                }
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    private func recheck() {
+        guard hunt.proofFile != nil else { return }
+        hunt.proofCheckData = nil
     }
 
     private func delay(_ t: TimeInterval) -> String {
@@ -321,10 +382,33 @@ struct ShinyShareCard: View {
         ]
         if hunt.totalTime() > 0 { rows.append((L("Dauer", "Time"), hours > 0 ? "\(hours) h \(minutes) min" : "\(minutes) min")) }
         if let found = hunt.foundAt { rows.append((L("Gefunden", "Found"), found.formatted(.dateTime.day().month().year()))) }
-        let card = ShinyShareCard(name: hunt.name, sprite: sprite, pixel: style == .pixel, proof: proof, rows: rows,
+        let card = ShinyShareCard(name: hunt.name, sprite: sprite, pixel: style == .pixel,
+                                  proof: hunt.proofCheck?.status == .verified ? proof : nil, rows: rows,
                                   gameTitle: hunt.game.title, colors: [Color(hex: 0xF7B733), Color(hex: 0xFC4A1A)])
         let renderer = ImageRenderer(content: card)
         renderer.scale = 3
         return renderer.uiImage
+    }
+}
+
+
+/// How the catch proof is shown (header, tiles, share card).
+struct ProofState {
+    let label: String
+    let icon: String
+    let color: Color
+
+    init(hunt: ShinyHunt, checking: Bool = false) {
+        if hunt.proofFile == nil {
+            label = ""; icon = "seal"; color = .primary
+        } else if checking || hunt.proofCheck == nil {
+            label = L("wird geprüft", "checking"); icon = "seal"; color = .secondary
+        } else {
+            switch hunt.proofCheck!.status {
+            case .verified: label = L("belegt", "proven"); icon = "checkmark.seal.fill"; color = .green
+            case .mismatch: label = L("passt nicht", "doesn't match"); icon = "exclamationmark.triangle.fill"; color = .orange
+            case .unchecked: label = L("Foto, nicht geprüft", "photo, not checked"); icon = "camera.fill"; color = .secondary
+            }
+        }
     }
 }
