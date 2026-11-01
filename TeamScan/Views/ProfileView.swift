@@ -77,14 +77,11 @@ struct ProfileView: View {
             .sheet(isPresented: $showAvatars) {
                 if let profile { AvatarPicker(profile: profile) }
             }
-            .confirmationDialog(L("Profil löschen?", "Delete profile?"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                                titleVisibility: .visible, presenting: deleting) { p in
-                Button(L("\(p.displayName) und alle Spielstände löschen", "Delete \(p.displayName) and all save files"), role: .destructive) {
-                    delete(p)
-                }
-            } message: { p in
-                Text(L("\(saves(of: p).count) Spielstände mit allen Teams und Hunts werden gelöscht. Das kann nicht rückgängig gemacht werden.",
-                       "\(saves(of: p).count) save files with all teams and hunts will be deleted. This can't be undone."))
+            .guardedDelete($deleting, area: .profiles, doubleConfirm: true,
+                           title: { p in L("\(p.displayName) löschen?", "Delete \(p.displayName)?") },
+                           message: { p in L("\(saves(of: p).count) Spielstände mit allen Teams und Hunts werden gelöscht.",
+                                             "\(saves(of: p).count) save files with all teams and hunts will be deleted.") }) { p in
+                delete(p)
             }
         }
     }

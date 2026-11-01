@@ -94,6 +94,8 @@ struct SettingsView: View {
 
                 AISettingsSection()
 
+                DeleteProtectionSection()
+
                 #if DEBUG
                 DeveloperSection()
                 #endif

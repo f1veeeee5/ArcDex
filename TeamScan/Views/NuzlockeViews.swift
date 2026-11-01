@@ -135,13 +135,10 @@ struct NuzlockeRunView: View {
             }
         }
         .sheet(isPresented: $showEdit) { SavegameEditSheet(save: save, suggested: nil) { _ in } }
-        .confirmationDialog(L("Run löschen?", "Delete run?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(L("Löschen", "Delete"), role: .destructive) {
-                context.delete(save)
-                dismiss()
-            }
-        } message: {
-            Text(L("Alle Fänge, Teams und der Friedhof werden gelöscht.", "All catches, teams and the graveyard will be deleted."))
+        .guardedDelete($confirmDelete, area: .saves, doubleConfirm: true, title: L("Run löschen?", "Delete run?"),
+                       message: L("Alle Fänge, Teams und der Friedhof werden gelöscht.", "All catches, teams and the graveyard will be deleted.")) {
+            context.delete(save)
+            dismiss()
         }
     }
 

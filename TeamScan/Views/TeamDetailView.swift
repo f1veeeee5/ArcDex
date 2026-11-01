@@ -196,11 +196,10 @@ struct TeamDetailView: View {
             Button(L("Sichern", "Save")) { team.name = renameText; team.touch() }
             Button(L("Abbrechen", "Cancel"), role: .cancel) {}
         }
-        .confirmationDialog(L("Team wirklich löschen?", "Delete this team?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(L("Löschen", "Delete"), role: .destructive) {
-                context.delete(team)
-                dismiss()
-            }
+        .guardedDelete($confirmDelete, area: .teams, title: L("Team wirklich löschen?", "Delete this team?"),
+                       message: L("\(team.members.count) Pokémon", "\(team.members.count) Pokémon")) {
+            context.delete(team)
+            dismiss()
         }
     }
 

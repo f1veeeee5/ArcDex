@@ -129,16 +129,12 @@ struct RootView: View {
             .sheet(item: $editingSave) { save in
                 SavegameEditSheet(save: save, suggested: nil) { _ in }
             }
-            .confirmationDialog(L("Spielstand löschen?", "Delete save file?"),
-                                isPresented: Binding(get: { deletingSave != nil }, set: { if !$0 { deletingSave = nil } }),
-                                titleVisibility: .visible, presenting: deletingSave) { save in
-                Button(L("Löschen", "Delete"), role: .destructive) {
-                    HuntActivityManager.end(huntsOf: save)
-                    context.delete(save)
-                }
-            } message: { save in
-                Text(L("Alle \(save.teams.count) Teams und \(save.hunts.count) Shiny-Hunts darin werden ebenfalls gelöscht.",
-                       "All \(save.teams.count) teams and \(save.hunts.count) shiny hunts in it will be deleted too."))
+            .guardedDelete($deletingSave, area: .saves, doubleConfirm: true,
+                           title: { _ in L("Spielstand löschen?", "Delete save file?") },
+                           message: { save in L("Alle \(save.teams.count) Teams und \(save.hunts.count) Shiny-Hunts darin werden ebenfalls gelöscht.",
+                                                "All \(save.teams.count) teams and \(save.hunts.count) shiny hunts in it will be deleted too.") }) { save in
+                HuntActivityManager.end(huntsOf: save)
+                context.delete(save)
             }
             .fileImporter(isPresented: $showFileImport, allowedContentTypes: [.arcdexRun, .json, .data]) { result in
                 if case .success(let url) = result, let run = RunTransfer.read(url) {

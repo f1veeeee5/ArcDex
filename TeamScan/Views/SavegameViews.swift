@@ -15,6 +15,8 @@ struct SavegameDetailView: View {
     @State private var showImport = false
     @State private var showEdit = false
     @State private var confirmDelete = false
+    @State private var deletingHunt: ShinyHunt?
+    @State private var deletingTeam: Team?
     @State private var renaming: Team?
     @State private var renameText = ""
 
@@ -38,7 +40,7 @@ struct SavegameDetailView: View {
                             ForEach(hunts) { hunt in
                                 HuntRowCard(hunt: hunt) { path.append(hunt) }
                                     .contextMenu {
-                                        Button(role: .destructive) { delete(hunt) } label: { Label(L("Hunt löschen", "Delete hunt"), systemImage: "trash") }
+                                        Button(role: .destructive) { deletingHunt = hunt } label: { Label(L("Hunt löschen", "Delete hunt"), systemImage: "trash") }
                                     }
                             }
                         }
@@ -65,7 +67,7 @@ struct SavegameDetailView: View {
                                 .contextMenu {
                                     Button { renameText = team.name; renaming = team } label: { Label(L("Umbenennen", "Rename"), systemImage: "pencil") }
                                     Button { duplicate(team) } label: { Label(L("Duplizieren", "Duplicate"), systemImage: "plus.square.on.square") }
-                                    Button(role: .destructive) { context.delete(team) } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
+                                    Button(role: .destructive) { deletingTeam = team } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
                                 }
                         }
                     }
@@ -79,7 +81,7 @@ struct SavegameDetailView: View {
                             Button { path.append(hunt) } label: { FoundShinyTile(hunt: hunt) }
                                 .buttonStyle(.plain)
                                 .contextMenu {
-                                    Button(role: .destructive) { delete(hunt) } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
+                                    Button(role: .destructive) { deletingHunt = hunt } label: { Label(L("Löschen", "Delete"), systemImage: "trash") }
                                 }
                         }
                     }
@@ -149,14 +151,22 @@ struct SavegameDetailView: View {
             Button(L("Sichern", "Save")) { renaming?.name = renameText; renaming = nil }
             Button(L("Abbrechen", "Cancel"), role: .cancel) { renaming = nil }
         }
-        .confirmationDialog(L("Spielstand löschen?", "Delete save file?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(L("Löschen", "Delete"), role: .destructive) {
-                HuntActivityManager.end(huntsOf: save)
-                context.delete(save)
-                dismiss()
-            }
-        } message: {
-            Text(L("Alle Teams und Shiny-Hunts darin werden ebenfalls gelöscht.", "All teams and shiny hunts in it will be deleted too."))
+        .guardedDelete($confirmDelete, area: .saves, doubleConfirm: true,
+                       title: L("Spielstand löschen?", "Delete save file?"),
+                       message: L("Alle Teams und Shiny-Hunts darin werden ebenfalls gelöscht.", "All teams and shiny hunts in it will be deleted too.")) {
+            HuntActivityManager.end(huntsOf: save)
+            context.delete(save)
+            dismiss()
+        }
+        .guardedDelete($deletingHunt, area: .hunts, doubleConfirm: true,
+                       title: { h in h.isFound ? L("Gefundenes Shiny löschen?", "Delete found shiny?") : L("Hunt löschen?", "Delete hunt?") },
+                       message: { h in L("\(h.name) · \(h.count) \(h.method.unit)", "\(h.name) · \(h.count) \(h.method.unit.lowercased())") }) { h in
+            delete(h)
+        }
+        .guardedDelete($deletingTeam, area: .teams,
+                       title: { t in L("Team „\(t.name)“ löschen?", "Delete team “\(t.name)”?") },
+                       message: { t in L("\(t.members.count) Pokémon", "\(t.members.count) Pokémon") }) { t in
+            context.delete(t)
         }
     }
 

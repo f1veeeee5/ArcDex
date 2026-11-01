@@ -108,12 +108,12 @@ struct HuntView: View {
         } message: {
             Text(L("Der Hunt wird nach \(hunt.count) \(hunt.method.unit) abgeschlossen.", "The hunt ends after \(hunt.count) \(hunt.method.unit.lowercased())."))
         }
-        .confirmationDialog(L("Hunt löschen?", "Delete hunt?"), isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button(L("Löschen", "Delete"), role: .destructive) {
-                HuntActivityManager.end(hunt: hunt)
-                context.delete(hunt)
-                dismiss()
-            }
+        .guardedDelete($confirmDelete, area: .hunts, doubleConfirm: true,
+                       title: hunt.isFound ? L("Gefundenes Shiny löschen?", "Delete found shiny?") : L("Hunt löschen?", "Delete hunt?"),
+                       message: L("\(hunt.name) · \(hunt.count) \(hunt.method.unit)", "\(hunt.name) · \(hunt.count) \(hunt.method.unit.lowercased())")) {
+            HuntActivityManager.end(hunt: hunt)
+            context.delete(hunt)
+            dismiss()
         }
     }
 
@@ -774,7 +774,15 @@ struct FoundShinyTile: View {
                     .frame(width: 70, height: 70)
                 ShinyBadge()
             }
-            Text(hunt.name).font(.caption.weight(.semibold)).lineLimit(1)
+            HStack(spacing: 3) {
+                Text(hunt.name).font(.caption.weight(.semibold)).lineLimit(1)
+                if hunt.proofFile != nil {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                        .accessibilityLabel(L("Fang-Beleg vorhanden", "Catch proof recorded"))
+                }
+            }
             Text("\(hunt.count) · \(hunt.foundAt?.formatted(.dateTime.day().month(.abbreviated).year(.twoDigits)) ?? "")")
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
