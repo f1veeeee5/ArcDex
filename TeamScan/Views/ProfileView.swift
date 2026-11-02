@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var nameDraft = ""
     @State private var showAvatars = false
     @State private var deleting: UserProfile?
+    @State private var showShinies = false
 
     private var profile: UserProfile? { profiles.first { $0.uuid.uuidString == activeProfile } ?? profiles.first }
 
@@ -66,6 +67,12 @@ struct ProfileView: View {
                 }
             }
             .navigationTitle(L("Profil", "Profile"))
+            .navigationDestination(isPresented: $showShinies) {
+                if let profile {
+                    ShinyCollectionView(hunts: saves(of: profile).flatMap(\.foundHunts)
+                        .sorted { ($0.foundAt ?? .distantPast) > ($1.foundAt ?? .distantPast) }, owner: profile.displayName)
+                }
+            }
             .alert(L("Anzeigename", "Display name"), isPresented: $editingName) {
                 TextField(L("Name", "Name"), text: $nameDraft)
                 Button(L("Sichern", "Save")) {
@@ -138,14 +145,21 @@ struct ProfileView: View {
         return HStack(spacing: 10) {
             statTile("\(list.count)", L("Spielstände", "Saves"), icon: "square.grid.2x2.fill")
             statTile("\(teams)", "Teams", icon: "person.3.fill")
-            statTile("\(shinies)", "Shinys", icon: "sparkles")
+            // a button (not a NavigationLink) – inside a List row a link would make the whole row tappable
+            Button { showShinies = true } label: {
+                statTile("\(shinies)", "Shinys", icon: "sparkles", link: true)
+            }
+            .buttonStyle(.plain)
             statTile("\(runs)", "Runs", icon: "flag.fill")
         }
     }
 
-    private func statTile(_ value: String, _ title: String, icon: String) -> some View {
+    private func statTile(_ value: String, _ title: String, icon: String, link: Bool = false) -> some View {
         VStack(spacing: 4) {
-            Image(systemName: icon).font(.subheadline.weight(.semibold)).foregroundStyle(.tint)
+            HStack(spacing: 3) {
+                Image(systemName: icon).font(.subheadline.weight(.semibold)).foregroundStyle(.tint)
+                if link { Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary) }
+            }
             Text(verbatim: value).font(.title3.weight(.bold).monospacedDigit())
             Text(title).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
         }
