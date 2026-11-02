@@ -10,6 +10,9 @@ final class UserProfile {
     /// Pokémon Showdown trainer sprite name
     var avatar: String = "red"
     var createdAt: Date = Date()
+    /// Buddy Pokémon shown next to the trainer (Pokémon id), and whether it is shiny
+    var buddyId: Int?
+    var buddyShiny: Bool = false
 
     init(name: String, avatar: String = "red") {
         self.name = name
@@ -29,6 +32,13 @@ enum ProfileStore {
 
     static func activate(_ profile: UserProfile) {
         UserDefaults.standard.set(profile.uuid.uuidString, forKey: key)
+    }
+
+    /// The profile that is active right now.
+    @MainActor
+    static func active(in context: ModelContext) -> UserProfile? {
+        let all = (try? context.fetch(FetchDescriptor<UserProfile>(sortBy: [SortDescriptor(\.createdAt)]))) ?? []
+        return all.first { $0.uuid == activeID } ?? all.first
     }
 
     /// Trainer sprites to choose from (names checked against Pokémon Showdown's avatar list).

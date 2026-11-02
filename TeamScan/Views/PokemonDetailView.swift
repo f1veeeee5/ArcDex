@@ -155,6 +155,21 @@ struct PokemonDetailView: View {
                 Label(shinyFav ? L("Shiny-Favorit entfernen", "Remove shiny favorite") : L("Als Shiny favorisieren", "Add as shiny favorite"),
                       systemImage: shinyFav ? "sparkles" : "sparkle")
             }
+            Divider()
+            let buddy = ProfileStore.active(in: context)
+            let isBuddy = buddy?.buddyId == p.id
+            Button {
+                buddy?.buddyId = p.id
+                buddy?.buddyShiny = false
+            } label: {
+                Label(isBuddy && buddy?.buddyShiny == false ? L("Ist dein Buddy", "Is your buddy") : L("Als Buddy wählen", "Make buddy"), systemImage: "pawprint.fill")
+            }
+            Button {
+                buddy?.buddyId = p.id
+                buddy?.buddyShiny = true
+            } label: {
+                Label(isBuddy && buddy?.buddyShiny == true ? L("Ist dein Shiny-Buddy", "Is your shiny buddy") : L("Als Shiny-Buddy wählen", "Make shiny buddy"), systemImage: "sparkles")
+            }
         } label: {
             Image(systemName: normal || shinyFav ? "heart.fill" : "heart")
                 .foregroundStyle(normal || shinyFav ? Color.pink : Color.primary)

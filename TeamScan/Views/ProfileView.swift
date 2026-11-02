@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var showAvatars = false
     @State private var deleting: UserProfile?
     @State private var showShinies = false
+    @State private var pickBuddy = false
 
     private var profile: UserProfile? { profiles.first { $0.uuid.uuidString == activeProfile } ?? profiles.first }
 
@@ -81,6 +82,16 @@ struct ProfileView: View {
                 }
                 Button(L("Abbrechen", "Cancel"), role: .cancel) {}
             }
+            .sheet(isPresented: $pickBuddy) {
+                OptionPicker(title: L("Buddy wählen", "Choose buddy"),
+                             options: Dex.shared.pokemon.filter { !$0.isBattleForm }.map {
+                                 PickerOption(id: $0.id, title: $0.name, subtitle: $0.altName, detail: $0.dexNumber, accessory: .pokemon($0.id), types: $0.t)
+                             },
+                             selected: profile?.buddyId) { id in
+                    guard let id else { return }
+                    withAnimation(.spring) { profile?.buddyId = id }
+                }
+            }
             .sheet(isPresented: $showAvatars) {
                 if let profile { AvatarPicker(profile: profile) }
             }
@@ -97,26 +108,30 @@ struct ProfileView: View {
 
     private func header(_ p: UserProfile) -> some View {
         VStack(spacing: 6) {
-            Button { showAvatars = true } label: {
-                ZStack(alignment: .bottom) {
-                    BattlePlatform(colors: [Color.appAccent])
-                        .frame(width: 150, height: 40)
-                        .padding(.bottom, 4)
-                    TrainerSprite(avatar: p.avatar)
-                        .frame(width: 140, height: 140)
-                        .padding(.bottom, 14)
+            // trainer and buddy share one platform
+            ZStack(alignment: .bottom) {
+                BattlePlatform(colors: [Color.appAccent] + buddyColors(p))
+                    .frame(width: 230, height: 48)
+                    .padding(.bottom, 4)
+                HStack(alignment: .bottom, spacing: -10) {
+                    Button { showAvatars = true } label: {
+                        TrainerSprite(avatar: p.avatar)
+                            .frame(width: 130, height: 130)
+                            .overlay(alignment: .topLeading) {
+                                Image(systemName: "pencil")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.appAccent, in: Circle())
+                                    .offset(x: 8, y: 10)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    buddyView(p)
                 }
-                .frame(height: 170)
-                .overlay(alignment: .topTrailing) {
-                    Image(systemName: "pencil")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 28, height: 28)
-                        .background(Color.appAccent, in: Circle())
-                        .offset(x: -6, y: 10)
-                }
+                .padding(.bottom, 18)
             }
-            .buttonStyle(.plain)
+            .frame(height: 170)
 
             Button {
                 nameDraft = p.name
@@ -134,6 +149,48 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+    }
+
+    private func buddyColors(_ p: UserProfile) -> [Color] {
+        guard let id = p.buddyId, let b = Dex.shared.pokemon(id) else { return [] }
+        return b.t.map { TypeColor.color($0) }
+    }
+
+    /// The buddy next to the trainer: tap for a menu (change, shiny, remove) – or a "+" when there is none.
+    @ViewBuilder private func buddyView(_ p: UserProfile) -> some View {
+        if let id = p.buddyId {
+            Menu {
+                Button { pickBuddy = true } label: { Label(L("Anderen Buddy wählen", "Choose another buddy"), systemImage: "arrow.triangle.2.circlepath") }
+                Button { withAnimation(.spring) { p.buddyShiny.toggle() } } label: {
+                    Label(p.buddyShiny ? L("Normal zeigen", "Show normal") : L("Als Shiny zeigen", "Show as shiny"), systemImage: p.buddyShiny ? "sparkle" : "sparkles")
+                }
+                Button(role: .destructive) { withAnimation(.snappy) { p.buddyId = nil } } label: {
+                    Label(L("Buddy entfernen", "Remove buddy"), systemImage: "xmark")
+                }
+            } label: {
+                AnimatedPokemonSprite(pokemonId: id, shiny: p.buddyShiny, grounded: true)
+                    .frame(width: 96, height: 96)
+                    .id("\(id)-\(p.buddyShiny)")
+                    .overlay(alignment: .topTrailing) {
+                        if p.buddyShiny { ShinyBadge() }
+                    }
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+        } else {
+            Button { pickBuddy = true } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.title3.weight(.bold))
+                        .frame(width: 52, height: 52)
+                        .background(Color.appAccent.opacity(0.15), in: Circle())
+                    Text(L("Buddy", "Buddy")).font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(Color.appAccent)
+                .frame(width: 96, height: 96, alignment: .bottom)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func stats(_ p: UserProfile) -> some View {
