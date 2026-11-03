@@ -1,0 +1,31 @@
+{
+  "name": "ArcDex",
+  "identifier": "com.f1veeeee5.arcdex.source",
+  "subtitle": "Dein Begleiter für jedes Pokémon-Abenteuer",
+  "iconURL": "https://raw.githubusercontent.com/f1veeeee5/ArcDex/main/icon.png",
+  "apps": [
+    {
+      "name": "ArcDex",
+      "bundleIdentifier": "app.lukas.teamscan",
+      "developerName": "Lukas",
+      "subtitle": "Teams, Shiny-Hunts, Nuzlockes & Pokédex",
+      "localizedDescription": "Teams scannen, Shinys hunten, Nuzlocke und Soul Link spielen, Arenaleiter vorbereiten – alles an einem Ort.",
+      "iconURL": "https://raw.githubusercontent.com/f1veeeee5/ArcDex/main/icon.png",
+      "tintColor": "E8384F",
+      "category": "utilities",
+      "versions": [
+        {
+          "version": "0.9.0",
+          "buildVersion": "1",
+          "date": "2026-11-03",
+          "localizedDescription": "Erste Version.",
+          "downloadURL": "https://github.com/f1veeeee5/ArcDex/releases/download/v0.9.0/ArcDex-unsigned.ipa",
+          "size": 9878637,
+          "minOSVersion": "26.0"
+        }
+      ],
+      "appPermissions": { "entitlements": [], "privacy": {} }
+    }
+  ],
+  "news": []
+}
